@@ -66,7 +66,7 @@ const updateCell = async () => {
     requestBody: { values: [[550]] },
   });
 
-  console.log("✅ Cell updated!");
+  // console.log("✅ Cell updated!");
 };
 
 export { addRecord, updateCell, readData };
