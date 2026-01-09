@@ -240,6 +240,125 @@ const validateProfileUpdateData = (data) => {
   };
 };
 
+const validateQuantity = (quantity, fieldName = 'Quantity') => {
+  if (quantity === undefined || quantity === null || quantity === '') {
+    return { isValid: false, error: `${fieldName} is required` };
+  }
+  
+  const numValue = parseFloat(quantity);
+  
+  if (isNaN(numValue)) {
+    return { isValid: false, error: `${fieldName} must be a valid number` };
+  }
+  
+  if (numValue < 0) {
+    return { isValid: false, error: `${fieldName} cannot be negative` };
+  }
+  
+  return { isValid: true, value: numValue };
+};
+
+const validateWireType = (wireType) => {
+  const validTypes = ['aluminium', 'copper'];
+  
+  if (!wireType || typeof wireType !== 'string') {
+    return { isValid: false, error: 'Wire type is required' };
+  }
+  
+  const normalizedType = wireType.toLowerCase().trim();
+  
+  if (!validTypes.includes(normalizedType)) {
+    return { isValid: false, error: 'Wire type must be either "aluminium" or "copper"' };
+  }
+  
+  return { isValid: true, value: normalizedType };
+};
+
+const validateItemProduced = (item) => {
+  const errors = {};
+  
+  if (!item.itemName || typeof item.itemName !== 'string' || item.itemName.trim().length === 0) {
+    errors.itemName = 'Item name is required';
+  }
+  
+  const quantityValidation = validateQuantity(item.quantity, 'Item quantity');
+  if (!quantityValidation.isValid) {
+    errors.quantity = quantityValidation.error;
+  }
+  
+  // Validate unit if provided
+  if (item.unit) {
+    const validUnits = ['kg', 'g', 'ton'];
+    if (!validUnits.includes(item.unit.toLowerCase())) {
+      errors.unit = `Unit must be one of: ${validUnits.join(', ')}`;
+    }
+  }
+  
+  return {
+    isValid: Object.keys(errors).length === 0,
+    errors
+  };
+};
+
+const validateCheckoutData = (data) => {
+  const errors = {};
+  const validated = {};
+  
+  // Validate wire used type
+  const wireTypeValidation = validateWireType(data.wireUsedType);
+  if (!wireTypeValidation.isValid) {
+    errors.wireUsedType = wireTypeValidation.error;
+  } else {
+    validated.wireUsedType = wireTypeValidation.value;
+  }
+  
+  // Validate wire used quantity
+  const wireQuantityValidation = validateQuantity(data.wireUsedQuantity, 'Wire used quantity');
+  if (!wireQuantityValidation.isValid) {
+    errors.wireUsedQuantity = wireQuantityValidation.error;
+  } else {
+    validated.wireUsedQuantity = wireQuantityValidation.value;
+  }
+  
+  // Validate item produced (required object)
+  if (!data.itemProduced || typeof data.itemProduced !== 'object') {
+    errors.itemProduced = 'Item produced is required';
+  } else {
+    const itemValidation = validateItemProduced(data.itemProduced);
+    if (!itemValidation.isValid) {
+      errors.itemProduced = itemValidation.errors;
+    } else {
+      validated.itemProduced = {
+        itemName: data.itemProduced.itemName.trim(),
+        quantity: parseFloat(data.itemProduced.quantity),
+        unit: (data.itemProduced.unit || 'kg').toLowerCase(),
+        description: data.itemProduced.description ? data.itemProduced.description.trim() : null
+      };
+    }
+  }
+  
+  // Validate scrap quantity (optional)
+  if (data.scrapQuantity !== undefined && data.scrapQuantity !== null && data.scrapQuantity !== '') {
+    const scrapValidation = validateQuantity(data.scrapQuantity, 'Scrap quantity');
+    if (!scrapValidation.isValid) {
+      errors.scrapQuantity = scrapValidation.error;
+    } else {
+      validated.scrapQuantity = scrapValidation.value;
+    }
+  }
+  
+  // Validate description (optional)
+  if (data.description !== undefined && data.description !== null) {
+    validated.description = typeof data.description === 'string' ? data.description.trim() : null;
+  }
+   
+  return {
+    isValid: Object.keys(errors).length === 0,
+    errors,
+    data: validated,
+  };
+};
+
 export {
   validateEmail,
   validatePassword,
@@ -251,5 +370,9 @@ export {
   validateChangePasswordData,
   validateResetPasswordData,
   validateProfileUpdateData,
+  validateCheckoutData,
+  validateQuantity,
+  validateWireType,
+  validateItemProduced,
 };
 

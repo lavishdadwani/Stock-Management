@@ -17,18 +17,18 @@ import {
 const router = Router();
 
 // Public routes
-router.post('/user/register', register);
-router.post('/user/login', login);
-router.get('/user/verify-email/:token', verifyEmail);
-router.post('/user/resend-verification', resendVerification);
-router.post('/user/forgot-password', forgotPassword);
-router.post('/user/reset-password/:token', resetPassword);
+router.post('/register', register);
+router.post('/login', login);
+router.get('/verify-email/:token', verifyEmail);
+router.post('/resend-verification', resendVerification);
+router.post('/forgot-password', forgotPassword);
+router.post('/reset-password/:token', resetPassword);
 
 // Protected routes
-router.get('/user/me', Auth, getCurrentUser);
-router.post('/user/verify-email', Auth, verifyEmailAuthenticated);
-router.patch('/user/profile', Auth, updateProfile);
-router.patch('/user/change-password', Auth, changePassword);
-router.delete('/user/logout', Auth, logout);
+router.get('/me', Auth, getCurrentUser);
+router.post('/verify-email', Auth, verifyEmailAuthenticated);
+router.patch('/profile', Auth, updateProfile);
+router.patch('/change-password', Auth, changePassword);
+router.delete('/logout', Auth, logout);
 
 export default router;

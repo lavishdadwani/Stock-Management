@@ -1,26 +1,32 @@
 import { Router } from 'express';
-import dotenv from 'dotenv';
-import { addRecord, updateCell, readData } from '../controllers/excelController.js';
-
+import {
+  createStock,
+  getAllStock,
+  getStockById,
+  updateStock,
+  deleteStock,
+  getStockQuantities
+} from '../controllers/stockController.js';
+import { Auth } from '../middleware/auth.js';
 const router = Router();
 
-router.post('/addStock', async (req,res)=>{
-    try{
-        const body = req.body
-        const payload = Object.values(body);
-        const result = await addRecord(payload)
-        res.status(200).json(result)
-    }catch(err){
-        res.status(500).send(err)
-    }
-})
-router.get('/stock', async (req,res)=>{
-    try{
-        const result = await readData()
-        res.status(200).json(result)
-    }catch(err){
-        res.status(500).send(err)
-    }
-})
+// Create new stock
+router.post('/create',Auth, createStock);
+
+// Get all stock
+router.get('/get-all',Auth, getAllStock);
+
+// Get stock quantities (Aluminium, Copper, Scrap) in KG
+router.get('/get-all-quantities',Auth, getStockQuantities);
+
+// Get stock by ID
+router.get('/:id',Auth, getStockById);
+
+// Update stock
+router.put('/update/:id',Auth, updateStock);
+
+// Delete stock
+router.delete('/delete/:id',Auth, deleteStock);
 
 export default router;
+
