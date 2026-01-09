@@ -4,7 +4,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useForm } from 'react-hook-form';
 import { updateProfile, getCurrentUser } from '../redux/slices/authSlice';
 import { showSnackbar } from '../redux/slices/snackbarSlice';
-import { userAPI } from '../../services/user';
+import userAPI from '../../services/user';
 import Button from '../components/Button';
 import Input from '../components/Input';
 import Card from '../components/Card';
@@ -124,7 +124,7 @@ const Profile = () => {
     return (
       <div className="min-h-screen bg-gray-50">
         <Navbar />
-        <div className="max-w-4xl mx-auto px-4 py-8">
+        <div className="max-w-4xl mx-auto px-4 py-8 pt-20">
           <div className="text-center">Loading...</div>
         </div>
       </div>

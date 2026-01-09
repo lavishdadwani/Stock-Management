@@ -24,9 +24,9 @@ const StockForm = ({ onSubmit, onCancel, loading, initialData = null, submitLabe
   return (
     <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
       <Select
-        label="Stock Type"
-        register={register('stockType', {
-          required: 'Stock type is required',
+        label="Item Name"
+        register={register('itemName', {
+          required: 'Item name is required',
         })}
         error={errors.stockType}
         options={[
@@ -59,7 +59,7 @@ const StockForm = ({ onSubmit, onCancel, loading, initialData = null, submitLabe
             { value: 'kg', label: 'kg' },
             { value: 'g', label: 'g' },
             { value: 'tons', label: 'tons' },
-            { value: 'pieces', label: 'pieces' },
+            // { value: 'pieces', label: 'pieces' },
           ]}
         />
       </div>

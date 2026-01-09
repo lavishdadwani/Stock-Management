@@ -3,7 +3,7 @@ import { useNavigate, useParams, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { useDispatch } from 'react-redux';
 import { showSnackbar } from '../redux/slices/snackbarSlice';
-import { userAPI } from '../../services/user';
+import userAPI from '../../services/user';
 import Button from '../components/Button';
 import InputPassword from '../components/InputPassword';
 import Card from '../components/Card';

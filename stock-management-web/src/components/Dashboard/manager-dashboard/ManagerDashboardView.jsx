@@ -1,327 +1,102 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { showSnackbar } from "../../../redux/slices/snackbarSlice";
 import Button from "../../Button";
 import StockTable from "./StockTable";
 import AddStockModal from "./AddStockModal";
 import EditStockModal from "./EditStockModal";
+import DeleteModal from "../../modal/DeleteModal";
 import { FaPlus } from "react-icons/fa";
 import StockCardsGrid from "../StockCardsGrid";
-import QuickActions from "../QuickActions";
+import stockAPI from "../../../../services/stock";
 
 const ManagerDashboardView = () => {
   const dispatch = useDispatch();
-  const { user } = useSelector((state) => state.auth);
   const [currentPage, setCurrentPage] = useState(1);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [editingStock, setEditingStock] = useState(null);
+  const [stockId, setStockId] = useState(null);
   const [loading, setLoading] = useState(false);
-  const pageSize = 20;
+  const [stockData, setStockData] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [stockQuantities, setStockQuantities] = useState({
+    aluminium: { name: 'Aluminium', quantity: 0, unit: 'kg' },
+    copper: { name: 'Copper', quantity: 0, unit: 'kg' },
+    scrap: { name: 'Scrap', quantity: 0, unit: 'kg' },
+  });
+  const pageSize = 10;
 
-  // Dummy stock data - in real app, this would come from API
-  const [stockData, setStockData] = useState([
-    {
-      _id: "1",
-      itemName: "Aluminium Wire",
-      quantity: 1250,
-      unit: "kg",
-      category: "Wire",
-      addedBy: "Manager 1",
-      addedDate: "2024-01-15",
-      status: "Active",
-    },
-    {
-      _id: "2",
-      itemName: "Copper Wire",
-      quantity: 890,
-      unit: "kg",
-      category: "Wire",
-      addedBy: "Manager 1",
-      addedDate: "2024-01-14",
-      status: "Active",
-    },
-    {
-      _id: "3",
-      itemName: "Scrap Metal",
-      quantity: 450,
-      unit: "kg",
-      category: "Scrap",
-      addedBy: "Manager 1",
-      addedDate: "2024-01-13",
-      status: "Active",
-    },
-    {
-      _id: "1",
-      itemName: "Aluminium Wire",
-      quantity: 1250,
-      unit: "kg",
-      category: "Wire",
-      addedBy: "Manager 1",
-      addedDate: "2024-01-15",
-      status: "Active",
-    },
-    {
-      _id: "2",
-      itemName: "Copper Wire",
-      quantity: 890,
-      unit: "kg",
-      category: "Wire",
-      addedBy: "Manager 1",
-      addedDate: "2024-01-14",
-      status: "Active",
-    },
-    {
-      _id: "3",
-      itemName: "Scrap Metal",
-      quantity: 450,
-      unit: "kg",
-      category: "Scrap",
-      addedBy: "Manager 1",
-      addedDate: "2024-01-13",
-      status: "Active",
-    },
-    {
-      _id: "1",
-      itemName: "Aluminium Wire",
-      quantity: 1250,
-      unit: "kg",
-      category: "Wire",
-      addedBy: "Manager 1",
-      addedDate: "2024-01-15",
-      status: "Active",
-    },
-    {
-      _id: "2",
-      itemName: "Copper Wire",
-      quantity: 890,
-      unit: "kg",
-      category: "Wire",
-      addedBy: "Manager 1",
-      addedDate: "2024-01-14",
-      status: "Active",
-    },
-    {
-      _id: "3",
-      itemName: "Scrap Metal",
-      quantity: 450,
-      unit: "kg",
-      category: "Scrap",
-      addedBy: "Manager 1",
-      addedDate: "2024-01-13",
-      status: "Active",
-    },
-    {
-      _id: "1",
-      itemName: "Aluminium Wire",
-      quantity: 1250,
-      unit: "kg",
-      category: "Wire",
-      addedBy: "Manager 1",
-      addedDate: "2024-01-15",
-      status: "Active",
-    },
-    {
-      _id: "2",
-      itemName: "Copper Wire",
-      quantity: 890,
-      unit: "kg",
-      category: "Wire",
-      addedBy: "Manager 1",
-      addedDate: "2024-01-14",
-      status: "Active",
-    },
-    {
-      _id: "3",
-      itemName: "Scrap Metal",
-      quantity: 450,
-      unit: "kg",
-      category: "Scrap",
-      addedBy: "Manager 1",
-      addedDate: "2024-01-13",
-      status: "Active",
-    },
-    {
-      _id: "1",
-      itemName: "Aluminium Wire",
-      quantity: 1250,
-      unit: "kg",
-      category: "Wire",
-      addedBy: "Manager 1",
-      addedDate: "2024-01-15",
-      status: "Active",
-    },
-    {
-      _id: "2",
-      itemName: "Copper Wire",
-      quantity: 890,
-      unit: "kg",
-      category: "Wire",
-      addedBy: "Manager 1",
-      addedDate: "2024-01-14",
-      status: "Active",
-    },
-    {
-      _id: "3",
-      itemName: "Scrap Metal",
-      quantity: 450,
-      unit: "kg",
-      category: "Scrap",
-      addedBy: "Manager 1",
-      addedDate: "2024-01-13",
-      status: "Active",
-    },
-    {
-      _id: "1",
-      itemName: "Aluminium Wire",
-      quantity: 1250,
-      unit: "kg",
-      category: "Wire",
-      addedBy: "Manager 1",
-      addedDate: "2024-01-15",
-      status: "Active",
-    },
-    {
-      _id: "2",
-      itemName: "Copper Wire",
-      quantity: 890,
-      unit: "kg",
-      category: "Wire",
-      addedBy: "Manager 1",
-      addedDate: "2024-01-14",
-      status: "Active",
-    },
-    {
-      _id: "3",
-      itemName: "Scrap Metal",
-      quantity: 450,
-      unit: "kg",
-      category: "Scrap",
-      addedBy: "Manager 1",
-      addedDate: "2024-01-13",
-      status: "Active",
-    },
-    {
-      _id: "1",
-      itemName: "Aluminium Wire",
-      quantity: 1250,
-      unit: "kg",
-      category: "Wire",
-      addedBy: "Manager 1",
-      addedDate: "2024-01-15",
-      status: "Active",
-    },
-    {
-      _id: "2",
-      itemName: "Copper Wire",
-      quantity: 890,
-      unit: "kg",
-      category: "Wire",
-      addedBy: "Manager 1",
-      addedDate: "2024-01-14",
-      status: "Active",
-    },
-    {
-      _id: "3",
-      itemName: "Scrap Metal",
-      quantity: 450,
-      unit: "kg",
-      category: "Scrap",
-      addedBy: "Manager 1",
-      addedDate: "2024-01-13",
-      status: "Active",
-    },
-    {
-      _id: "1",
-      itemName: "Aluminium Wire",
-      quantity: 1250,
-      unit: "kg",
-      category: "Wire",
-      addedBy: "Manager 1",
-      addedDate: "2024-01-15",
-      status: "Active",
-    },
-    {
-      _id: "2",
-      itemName: "Copper Wire",
-      quantity: 890,
-      unit: "kg",
-      category: "Wire",
-      addedBy: "Manager 1",
-      addedDate: "2024-01-14",
-      status: "Active",
-    },
-    {
-      _id: "3",
-      itemName: "Scrap Metal",
-      quantity: 450,
-      unit: "kg",
-      category: "Scrap",
-      addedBy: "Manager 1",
-      addedDate: "2024-01-13",
-      status: "Active",
-    },
-    {
-      _id: "1",
-      itemName: "Aluminium Wire",
-      quantity: 1250,
-      unit: "kg",
-      category: "Wire",
-      addedBy: "Manager 1",
-      addedDate: "2024-01-15",
-      status: "Active",
-    },
-    {
-      _id: "2",
-      itemName: "Copper Wire",
-      quantity: 890,
-      unit: "kg",
-      category: "Wire",
-      addedBy: "Manager 1",
-      addedDate: "2024-01-14",
-      status: "Active",
-    },
-    {
-      _id: "3",
-      itemName: "Scrap Metal",
-      quantity: 450,
-      unit: "kg",
-      category: "Scrap",
-      addedBy: "Manager 1",
-      addedDate: "2024-01-13",
-      status: "Active",
-    },
-    {
-      _id: "1",
-      itemName: "Aluminium Wire",
-      quantity: 1250,
-      unit: "kg",
-      category: "Wire",
-      addedBy: "Manager 1",
-      addedDate: "2024-01-15",
-      status: "Active",
-    },
-    {
-      _id: "2",
-      itemName: "Copper Wire",
-      quantity: 890,
-      unit: "kg",
-      category: "Wire",
-      addedBy: "Manager 1",
-      addedDate: "2024-01-14",
-      status: "Active",
-    },
-    {
-      _id: "3",
-      itemName: "Scrap Metal",
-      quantity: 450,
-      unit: "kg",
-      category: "Scrap",
-      addedBy: "Manager 1",
-      addedDate: "2024-01-13",
-      status: "Active",
-    },
-  ]);
+  useEffect(() => {
+    fetchStockData();
+  }, [currentPage]);
+
+  useEffect(() => {
+    fetchStockQuantities();
+  }, []);
+
+  const fetchStockData = async () => {
+    setLoading(true);
+    try {
+      const queryParams = {
+        page: currentPage,
+        limit: pageSize,
+      };
+
+      const response = await stockAPI.get_all(queryParams);
+
+      if (response.ok) {
+        const data = response.data?.data || [];
+        const additionalData = response.data?.additionalData || {};
+        
+        setStockData(data);
+        setTotal(additionalData.totalItems || data.length);
+      } else {
+        dispatch(
+          showSnackbar({
+            message: response.data?.displayMessage || response.data?.message,
+            severity: "error",
+          })
+        );
+      }
+    } catch (error) {
+      console.error('Error fetching stock:', error);
+      dispatch(
+        showSnackbar({
+          message: error.message || 'Failed to load stock items',
+          severity: "error",
+        })
+      );
+      setStockData([]);
+      setTotal(0);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchStockQuantities = async () => {
+    try {
+      const response = await stockAPI.getQuantities();
+      
+      if (response.ok && response.data?.data) {
+        const data = response.data.data;
+        setStockQuantities({
+          aluminium: data.aluminium,
+          copper: data.copper,
+          scrap: data.scrap,
+        });
+      } else {
+        setStockQuantities({
+          aluminium: { name: 'Aluminium', quantity: 0, unit: 'kg' },
+          copper: { name: 'Copper', quantity: 0, unit: 'kg' },
+          scrap: { name: 'Scrap', quantity: 0, unit: 'kg' },
+        });
+      }
+    } catch (error) {
+      dispatch(showSnackbar("Error fetching stock quantities", "error"));
+    }
+  };
 
   const handlePageChange = (page) => {
     setCurrentPage(page);
@@ -337,44 +112,80 @@ const ManagerDashboardView = () => {
   };
 
   const handleDelete = (id) => {
-    if (window.confirm("Are you sure you want to delete this stock item?")) {
-      setStockData(stockData.filter((item) => item._id !== id));
+    setStockId(id);
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!stockId?._id) return;
+    
+    setLoading(true);
+    try {
+      const response = await stockAPI.deleteStock(stockId._id);
+      
+      if (response.ok) {
+        dispatch(
+          showSnackbar({
+            message: "Stock item deleted successfully",
+            severity: "success",
+          })
+        );
+        setIsDeleteModalOpen(false);
+        setStockId(null);
+        fetchStockData();
+        fetchStockQuantities();
+      } else {
+        dispatch(showSnackbar(response.data?.message || "Failed to delete item", "error"));
+      }
+    } catch (error) {
+      console.error('Error deleting stock:', error);
       dispatch(
         showSnackbar({
-          message: "Stock item deleted successfully",
-          severity: "success",
+          message: error.message || "Failed to delete stock item",
+          severity: "error",
         })
       );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCloseDeleteModal = () => {
+    if (!loading) {
+      setIsDeleteModalOpen(false);
+      setStockId(null);
     }
   };
 
   const handleAddSubmit = async (data) => {
     setLoading(true);
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      const response = await stockAPI.create(data);
 
-      // Add new stock
-      const newStock = {
-        _id: String(Date.now()),
-        ...data,
-        quantity: Number(data.quantity),
-        addedBy: user?.name || "Manager",
-        addedDate: new Date().toISOString().split("T")[0],
-        status: "Active",
-      };
-      setStockData([newStock, ...stockData]);
-      dispatch(
-        showSnackbar({
-          message: "Stock item added successfully",
-          severity: "success",
-        })
-      );
-      setIsAddModalOpen(false);
+      if (response.ok) {
+        dispatch(
+          showSnackbar({
+            message: response.data?.displayMessage || "Stock item added successfully",
+            severity: "success",
+          })
+        );
+        setIsAddModalOpen(false);
+        setCurrentPage(1);
+        fetchStockData();
+        fetchStockQuantities()
+      } else {
+        dispatch(
+          showSnackbar({
+            message: response.data?.displayMessage || response.data?.message || 'Failed to create stock',
+            severity: "error",
+          })
+        );
+      }
     } catch (error) {
+      console.error('Error creating stock:', error);
       dispatch(
         showSnackbar({
-          message: "Failed to save stock item",
+          message: error.message || "Failed to save stock item",
           severity: "error",
         })
       );
@@ -384,37 +195,30 @@ const ManagerDashboardView = () => {
   };
 
   const handleEditSubmit = async (data) => {
+    if (!editingStock?._id) return;
+    
     setLoading(true);
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      const response = await stockAPI.edit(editingStock._id, data);
 
-      // Update existing stock
-      setStockData(
-        stockData.map((item) =>
-          item._id === editingStock._id
-            ? {
-                ...item,
-                ...data,
-                quantity: Number(data.quantity),
-                addedBy: user?.name || "Manager",
-                addedDate: new Date().toISOString().split("T")[0],
-              }
-            : item
-        )
-      );
-      dispatch(
-        showSnackbar({
-          message: "Stock item updated successfully",
-          severity: "success",
-        })
-      );
-      setIsEditModalOpen(false);
-      setEditingStock(null);
+      if (response.ok) {
+        dispatch(
+          showSnackbar({
+            message: response.data?.displayMessage || "Stock item updated successfully",
+            severity: "success",
+          })
+        );
+        setIsEditModalOpen(false);
+        setEditingStock(null);
+        fetchStockData();
+        fetchStockQuantities()
+      } else {
+        dispatch(showSnackbar(response.data?.message || "Failed to delete item", "error"));
+      }
     } catch (error) {
       dispatch(
         showSnackbar({
-          message: "Failed to update stock item",
+          message: error.message || "Failed to update stock item",
           severity: "error",
         })
       );
@@ -430,24 +234,6 @@ const ManagerDashboardView = () => {
   const handleCloseEditModal = () => {
     setIsEditModalOpen(false);
     setEditingStock(null);
-  };
-  // Dummy stock data
-  const stockData1 = {
-    aluminiumWire: {
-      name: "Aluminium Wire",
-      quantity: 1250,
-      unit: "kg",
-    },
-    copperWire: {
-      name: "Copper Wire",
-      quantity: 890,
-      unit: "kg",
-    },
-    scrap: {
-      name: "Scrap",
-      quantity: 450,
-      unit: "kg",
-    },
   };
   return (
     <div className="max-w-7xl mx-auto">
@@ -465,15 +251,13 @@ const ManagerDashboardView = () => {
       </div>
 
       {/* Stock Cards */}
-      <StockCardsGrid stockData={stockData1} />
-
-      {/* Quick Actions */}
-      {/* <QuickActions /> */}
+      <StockCardsGrid stockQuantities={stockQuantities} fetchStockQuantities={fetchStockQuantities} />
 
       {/* Stock Table */}
       <StockTable
         stockData={stockData}
         currentPage={currentPage}
+        total={total}
         pageSize={pageSize}
         onPageChange={handlePageChange}
         loading={loading}
@@ -496,6 +280,16 @@ const ManagerDashboardView = () => {
         onSubmit={handleEditSubmit}
         loading={loading}
         stockData={editingStock}
+      />
+
+      {/* Delete Stock Modal */}
+      <DeleteModal
+        isOpen={isDeleteModalOpen}
+        onClose={handleCloseDeleteModal}
+        onConfirm={handleConfirmDelete}
+        itemName={stockId?.itemName}
+        loading={loading}
+        title="Delete Stock Item"
       />
     </div>
   );

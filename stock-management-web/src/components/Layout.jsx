@@ -6,12 +6,12 @@ import Sidebar from './Sidebar';
 const Layout = ({ children }) => {
   const location = useLocation();
   const isProfilePage = location.pathname === '/profile';
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
-      <div className="flex">
+      <div className="flex pt-16">
         {/* Sidebar - hidden on profile page */}
         {!isProfilePage && (
           <Sidebar 

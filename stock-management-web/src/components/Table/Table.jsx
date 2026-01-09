@@ -18,6 +18,9 @@ const Table = ({
   columns = [],
   dataSource = [],
   emptyMessage = 'No data available',
+  title = '',
+  onAddClick,
+  onExportClick,
   ...props
 }) => {
   const [showExportModal, setShowExportModal] = useState(false);
@@ -52,7 +55,50 @@ const Table = ({
       )}
 
       {/* Table */}
-      <Card className="overflow-hidden">
+      <Card className="overflow-hidden p-0">
+        {/* Table Header with Title and Actions */}
+        {(title || onAddClick || onExportClick) && (
+          <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+            {title && (
+              <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+            )}
+            <div className="flex items-center gap-3">
+              {onAddClick && (
+                <button
+                  onClick={onAddClick}
+                  disabled={true}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-600"
+                >
+                  Add
+                </button>
+              )}
+              {onExportClick && (
+                <button
+                  onClick={onExportClick}
+                  disabled={true}
+                  className="px-4 py-2 bg-gray-600 text-white rounded-lg font-medium hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-gray-600"
+                >
+                  Export
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Top Pagination */}
+        {showPagination && total > 0 && (
+          <div className="px-6 py-4 border-b border-gray-200">
+            <Pagination
+              current={currentPage}
+              total={total}
+              pageSize={pageSize}
+              onChange={handlePageChange}
+              showSizeChanger={false}
+              showQuickJumper={false}
+            />
+          </div>
+        )}
+
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">

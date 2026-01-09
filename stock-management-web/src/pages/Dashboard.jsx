@@ -3,7 +3,7 @@ import { useSelector } from 'react-redux';
 import Layout from '../components/Layout';
 import ManagerDashboardView from '../components/Dashboard/manager-dashboard/ManagerDashboardView';
 import OwnerDashboardView from '../components/Dashboard/owner-dashboard/OwnerDashboardView';
-
+import CoreTeamDashboard from "../components/Dashboard/coreTeamDashboard/Dashboard"
 const Dashboard = () => {
   const { user } = useSelector((state) => state.auth);
   const userRole = user?.role?.toLowerCase();
@@ -17,7 +17,7 @@ const Dashboard = () => {
          <OwnerDashboardView />
       )}
       {userRole === 'core team' && (
-         <ManagerDashboardView />
+         <CoreTeamDashboard />
       )}
     </Layout>
   );

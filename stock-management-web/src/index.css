@@ -17,3 +17,123 @@ body {
 * {
   box-sizing: border-box;
 }
+
+/* RC Pagination Custom Styles */
+.rc-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.rc-pagination-item {
+  min-width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  background-color: white;
+  color: #374151;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.rc-pagination-item:hover:not(.rc-pagination-item-active):not(.rc-pagination-item-disabled) {
+  border-color: #3b82f6;
+  color: #3b82f6;
+  background-color: #eff6ff;
+}
+
+.rc-pagination-item-active {
+  background-color: #3b82f6;
+  border-color: #3b82f6;
+  color: white;
+  font-weight: 600;
+}
+
+.rc-pagination-item-active:hover {
+  background-color: #2563eb;
+  border-color: #2563eb;
+}
+
+.rc-pagination-item-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.rc-pagination-prev,
+.rc-pagination-next {
+  min-width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  background-color: white;
+  color: #374151;
+  font-size: 0.875rem;
+}
+
+.rc-pagination-prev:hover:not(.rc-pagination-item-disabled),
+.rc-pagination-next:hover:not(.rc-pagination-item-disabled) {
+  border-color: #3b82f6;
+  color: #3b82f6;
+  background-color: #eff6ff;
+}
+
+.rc-pagination-prev.rc-pagination-item-disabled,
+.rc-pagination-next.rc-pagination-item-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.rc-pagination-jump-prev,
+.rc-pagination-jump-next {
+  min-width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  background-color: white;
+  color: #374151;
+  font-size: 0.875rem;
+}
+
+.rc-pagination-jump-prev:hover,
+.rc-pagination-jump-next:hover {
+  border-color: #3b82f6;
+  color: #3b82f6;
+  background-color: #eff6ff;
+}
+
+/* Ensure pagination items are visible */
+.rc-pagination li {
+  list-style: none;
+  display: inline-block;
+  margin: 0;
+  padding: 0;
+}
+
+.rc-pagination ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
