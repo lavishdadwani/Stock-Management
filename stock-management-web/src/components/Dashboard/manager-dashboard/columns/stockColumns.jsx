@@ -35,27 +35,17 @@ export const getStockColumns = (onEdit, onDelete) => [
     title: 'Added By',
     dataIndex: 'addedBy',
     key: 'addedBy',
+    render: (value) => value?.name || "unknown"
+    ,
   },
   {
     title: 'Date Added',
     dataIndex: 'addedDate',
     key: 'addedDate',
-  },
-  {
-    title: 'Status',
-    dataIndex: 'status',
-    key: 'status',
-    render: (value) => (
-      <span
-        className={`px-2 py-1 text-xs font-semibold rounded-full ${
-          value === 'Active'
-            ? 'bg-green-100 text-green-800'
-            : 'bg-red-100 text-red-800'
-        }`}
-      >
-        {value}
-      </span>
-    ),
+    render: (value) => {
+      if (!value) return '-';
+      return new Date(value).toLocaleDateString();
+    },
   },
   {
     title: 'Actions',

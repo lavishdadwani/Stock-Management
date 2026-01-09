@@ -1,122 +1,41 @@
-import apiConfig, { normalizeAxiosResponse } from "./config.js";
+import apiConfig from "./config.js"
 
-const client = apiConfig.client;
+const register = (userData) => apiConfig.client.post("user/register", userData)
 
-// Set auth token in request headers
-const setAuthToken = (token) => {
-  if (token) {
-    client.setHeader('Authorization', token);
-  } else {
-    client.deleteHeader('Authorization');
-  }
-};
+const login = (credentials) => apiConfig.client.post("user/login", credentials)
 
-// Get token from localStorage
-const getToken = () => {
-  return localStorage.getItem('token');
-};
+const logout = () => apiConfig.client.delete("user/logout")
 
-// User API functions
-export const userAPI = {
-  // Register a new user
-  register: async (userData) => {
-    const token = getToken();
-    if (token) setAuthToken(token);
-    
-    const response = await client.post('/user/register', userData);
-    return normalizeAxiosResponse(response);
-  },
+const verifyEmail = (token) => apiConfig.client.get(`user/verify-email/${token}`)
 
-  // Login user
-  login: async (credentials) => {
-    const token = getToken();
-    if (token) setAuthToken(token);
-    
-    const response = await client.post('/user/login', credentials);
-    return normalizeAxiosResponse(response);
-  },
+const verifyEmailAuthenticated = () => apiConfig.client.post("user/verify-email")
 
-  // Logout user
-  logout: async () => {
-    const token = getToken();
-    if (token) setAuthToken(token);
-    
-    const response = await client.delete('/user/logout');
-    return normalizeAxiosResponse(response);
-  },
+const resendVerification = (email) => apiConfig.client.post("user/resend-verification", { email })
 
-  // Verify email (with token)
-  verifyEmail: async (token) => {
-    const response = await client.get(`/user/verify-email/${token}`);
-    return normalizeAxiosResponse(response);
-  },
+const forgotPassword = (email) => apiConfig.client.post("user/forgot-password", { email })
 
-  // Verify email (authenticated user)
-  verifyEmailAuthenticated: async () => {
-    const token = getToken();
-    if (token) setAuthToken(token);
-    
-    const response = await client.post('/user/verify-email');
-    return normalizeAxiosResponse(response);
-  },
-
-  // Resend verification email
-  resendVerification: async (email) => {
-    const response = await client.post('/user/resend-verification', { email });
-    return normalizeAxiosResponse(response);
-  },
-
-  // Forgot password
-  forgotPassword: async (email) => {
-    const response = await client.post('/user/forgot-password', { email });
-    return normalizeAxiosResponse(response);
-  },
-
-  // Reset password
-  resetPassword: async (token, password, confirmPassword) => {
-    const response = await client.post(`/user/reset-password/${token}`, { 
+const resetPassword = (token, password, confirmPassword) => apiConfig.client.post(`user/reset-password/${token}`, { 
       password,
       confirmPassword 
-    });
-    return normalizeAxiosResponse(response);
-  },
+})
 
-  // Change password (authenticated)
-  changePassword: async (passwordData) => {
-    const token = getToken();
-    if (token) setAuthToken(token);
-    
-    const response = await client.patch('/user/change-password', passwordData);
-    return normalizeAxiosResponse(response);
-  },
+const changePassword = (passwordData) => apiConfig.client.patch("user/change-password", passwordData)
 
-  // Get current user
-  getCurrentUser: async () => {
-    const token = getToken();
-    if (token) setAuthToken(token);
-    
-    const response = await client.get('/user/me');
-    return normalizeAxiosResponse(response);
-  },
+const getCurrentUser = () => apiConfig.client.get("user/me")
 
-  // Update user profile
-  updateProfile: async (profileData) => {
-    const token = getToken();
-    if (token) setAuthToken(token);
-    
-    const response = await client.patch('/user/profile', profileData);
-    return normalizeAxiosResponse(response);
-  },
-};
+const updateProfile = (profileData) => apiConfig.client.patch("user/profile", profileData)
 
-// Initialize token on module load
-const initToken = () => {
-  const token = getToken();
-  if (token) {
-    setAuthToken(token);
-  }
-};
 
-initToken();
-
-export default userAPI;
+export default {
+  register,
+  login,
+  logout,
+  verifyEmail,
+  verifyEmailAuthenticated,
+  resendVerification,
+  forgotPassword,
+  resetPassword,
+  changePassword,
+  getCurrentUser,
+  updateProfile
+}

@@ -5,6 +5,7 @@ import { getStockColumns } from './columns/stockColumns';
 const StockTable = ({
   stockData,
   currentPage,
+  total,
   pageSize,
   onPageChange,
   loading,
@@ -13,18 +14,13 @@ const StockTable = ({
 }) => {
   const columns = getStockColumns(onEdit, onDelete);
 
-  // Paginate data
-  const paginatedData = stockData.slice(
-    (currentPage - 1) * pageSize,
-    currentPage * pageSize
-  );
-
+  // Data is already paginated from API, no need to slice
   return (
     <Table
       columns={columns}
-      dataSource={paginatedData}
+      dataSource={stockData}
       currentPage={currentPage}
-      total={stockData.length}
+      total={total}
       pageSize={pageSize}
       onPageChangeHandler={onPageChange}
       showPagination={true}
