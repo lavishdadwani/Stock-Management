@@ -45,7 +45,6 @@ const Auth = async function (req, res, next) {
       return res.unauthorized('Token is invalid or expired.');
     }
   } catch (err) {
-    console.error('Auth middleware error:', err);
     return res.error('Server error during authentication.', err, null, 500);
   }
 };

@@ -12,6 +12,7 @@ import {
   getCurrentUser,
   updateProfile,
   logout,
+  getAllUsers,
 } from '../controllers/userController.js';
 
 const router = Router();
@@ -26,6 +27,7 @@ router.post('/reset-password/:token', resetPassword);
 
 // Protected routes
 router.get('/me', Auth, getCurrentUser);
+router.get('/get-all', Auth, getAllUsers);
 router.post('/verify-email', Auth, verifyEmailAuthenticated);
 router.patch('/profile', Auth, updateProfile);
 router.patch('/change-password', Auth, changePassword);

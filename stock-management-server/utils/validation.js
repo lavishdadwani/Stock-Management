@@ -359,6 +359,59 @@ const validateCheckoutData = (data) => {
   };
 };
 
+const validateStockTransferData = (data) => {
+  const errors = {};
+  const validated = {};
+  
+  if (!data.toUserId) {
+    errors.toUserId = 'Recipient user ID is required';
+  } else {
+    validated.toUserId = data.toUserId;
+  }
+  
+  if (!data.itemName || typeof data.itemName !== 'string') {
+    errors.itemName = 'Item name is required';
+  } else {
+    const validItems = ['Aluminium', 'Copper', 'Scrap'];
+    const normalizedItem = data.itemName.trim();
+    if (!validItems.includes(normalizedItem)) {
+      errors.itemName = `Item name must be one of: ${validItems.join(', ')}`;
+    } else {
+      validated.itemName = normalizedItem;
+    }
+  }
+  
+  const quantityValidation = validateQuantity(data.quantity, 'Quantity');
+  if (!quantityValidation.isValid) {
+    errors.quantity = quantityValidation.error;
+  } else {
+    validated.quantity = quantityValidation.value;
+  }
+  
+  if (data.unit) {
+    const validUnits = ['kg', 'g', 'ton'];
+    const normalizedUnit = data.unit.toLowerCase();
+    if (!validUnits.includes(normalizedUnit)) {
+      errors.unit = `Unit must be one of: ${validUnits.join(', ')}`;
+    } else {
+      validated.unit = normalizedUnit;
+    }
+  } else {
+    validated.unit = 'kg'; // Default unit
+  }
+  
+  // Validate description (optional)
+  if (data.description !== undefined && data.description !== null) {
+    validated.description = typeof data.description === 'string' ? data.description.trim() : null;
+  }
+  
+  return {
+    isValid: Object.keys(errors).length === 0,
+    errors,
+    data: validated,
+  };
+};
+
 export {
   validateEmail,
   validatePassword,
@@ -374,5 +427,6 @@ export {
   validateQuantity,
   validateWireType,
   validateItemProduced,
+  validateStockTransferData,
 };
 

@@ -506,6 +506,40 @@ const logout = async (req, res) => {
   }
 };
 
+/**
+ * @route   GET /user/get-all
+ * @desc    Get all users (with optional role filter)
+ * @access  Private (Manager/Owner only)
+ */
+const getAllUsers = async (req, res) => {
+  try {
+    const { role, isActive } = req.query;
+    
+    // Build query
+    const query = {};
+    if (role && role.trim() !== '') {
+      query.role = role.trim();
+    }
+    if (isActive !== undefined && isActive !== null && isActive !== '') {
+      query.isActive = isActive === 'true' || isActive === true;
+    }
+
+    const users = await User.find(query)
+      .select('name email role isActive createdAt')
+      .sort({ name: 1 });
+
+    return res.success(
+      'Users fetched successfully',
+      users,
+      null,
+      200
+    );
+  } catch (err) {
+    console.error('Get all users error:', err);
+    return res.error('Server error', err, null, 500);
+  }
+};
+
 export {
   register,
   login,
@@ -518,5 +552,6 @@ export {
   getCurrentUser,
   updateProfile,
   logout,
+  getAllUsers,
 };
 

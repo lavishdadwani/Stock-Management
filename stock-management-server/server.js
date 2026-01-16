@@ -12,6 +12,7 @@ import userRoutes from './routes/user.routes.js';
 import stockRoutes from './routes/excelStock.routes.js';
 import stockApiRoutes from './routes/stock.routes.js';
 import attendanceRoutes from './routes/attendance.routes.js';
+import stockTransferRoutes from './routes/stockTransfer.routes.js';
 import Response from './models/response.model.js';
 import './db.js';
 
@@ -65,6 +66,7 @@ app.use(stockRoutes) // Old Google Sheets routes
 app.use("/api/stock",stockApiRoutes) // New MongoDB stock API routes
 app.use("/api/user",userRoutes)
 app.use("/api/attendance",attendanceRoutes) // Attendance and check-in/check-out routes
+app.use("/api/stock-transfer",stockTransferRoutes) // Stock transfer routes
 
 app.get('/', (req, res) => {
   res.send('server is working fine');
