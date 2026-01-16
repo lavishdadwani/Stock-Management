@@ -117,11 +117,11 @@ const ManagerDashboardView = () => {
   };
 
   const handleConfirmDelete = async () => {
-    if (!stockId?._id) return;
+    if (!stockId) return;
     
     setLoading(true);
     try {
-      const response = await stockAPI.deleteStock(stockId._id);
+      const response = await stockAPI.deleteStock(stockId);
       
       if (response.ok) {
         dispatch(
@@ -287,7 +287,7 @@ const ManagerDashboardView = () => {
         isOpen={isDeleteModalOpen}
         onClose={handleCloseDeleteModal}
         onConfirm={handleConfirmDelete}
-        itemName={stockId?.itemName}
+        // itemName={stockId?.itemName}
         loading={loading}
         title="Delete Stock Item"
       />

@@ -1,4 +1,5 @@
 import apiConfig from "./config.js"
+import request from "../src/utils/request.js"
 
 const register = (userData) => apiConfig.client.post("user/register", userData)
 
@@ -25,6 +26,14 @@ const getCurrentUser = () => apiConfig.client.get("user/me")
 
 const updateProfile = (profileData) => apiConfig.client.patch("user/profile", profileData)
 
+const getAllUsers = (params) => {
+  let queryString = "";
+  if(params && Object.keys(params).length > 0){
+    queryString = "?" + request.toRequestParams(params)
+  }
+  return apiConfig.client.get(`user/get-all${queryString}`)
+} 
+
 
 export default {
   register,
@@ -37,5 +46,6 @@ export default {
   resetPassword,
   changePassword,
   getCurrentUser,
-  updateProfile
+  updateProfile,
+  getAllUsers
 }
