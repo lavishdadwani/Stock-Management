@@ -15,6 +15,7 @@ import Inventory from './pages/Inventory'
 import Reports from './pages/Reports'
 import Users from './pages/Users'
 import Settings from './pages/Settings'
+import StockTransfer from './pages/StockTransfer'
 
 function App() {
   const dispatch = useDispatch()
@@ -100,6 +101,14 @@ function App() {
           element={
             <ProtectedRoute>
               <Settings />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/stock-transfer" 
+          element={
+            <ProtectedRoute>
+              <StockTransfer />
             </ProtectedRoute>
           } 
         />

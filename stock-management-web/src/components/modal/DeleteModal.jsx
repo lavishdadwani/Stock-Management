@@ -8,7 +8,7 @@ const DeleteModal = ({
   onClose,
   onConfirm,
   itemName = '',
-  message = 'Are you sure you want to delete this item?',
+  message,
   loading = false,
   title = 'Confirm Deletion',
 }) => {
@@ -16,9 +16,7 @@ const DeleteModal = ({
     onConfirm();
   };
 
-  const displayMessage = itemName 
-    ? `Are you sure you want to delete "${itemName}"? This action cannot be undone.`
-    : message;
+  const displayMessage = message ||  "Are you sure you want to delete this entry? This action cannot be undone."
 
   return (
     <Modal

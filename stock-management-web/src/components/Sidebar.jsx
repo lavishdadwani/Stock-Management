@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import { 
   FaHome, 
   FaBox, 
@@ -8,13 +9,16 @@ import {
   FaCog, 
   FaChevronLeft, 
   FaChevronRight,
-  FaWarehouse
+  FaWarehouse,
+  FaExchangeAlt
 } from 'react-icons/fa';
 
 const Sidebar = ({ isOpen: controlledIsOpen, onToggle }) => {
   const [internalIsOpen, setInternalIsOpen] = useState(true);
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useSelector((state) => state.auth);
+  const userRole = user?.role || 'owner';
 
   // Use controlled state if provided, otherwise use internal state
   const sidebarOpen = controlledIsOpen !== undefined ? controlledIsOpen : internalIsOpen;
@@ -28,38 +32,54 @@ const Sidebar = ({ isOpen: controlledIsOpen, onToggle }) => {
     }
   };
 
-  const menuItems = [
+  const allMenuItems = [
     {
       name: 'Dashboard',
       icon: FaHome,
       path: '/',
+      roles: ['manager', 'owner', 'core team'], 
     },
     {
       name: 'Stock',
       icon: FaBox,
       path: '/stock',
+      roles: ['manager', 'owner'],
     },
     {
       name: 'Inventory',
       icon: FaWarehouse,
       path: '/inventory',
+      roles: ['manager', 'owner'],
+    },
+    {
+      name: 'Stock Transfer',
+      icon: FaExchangeAlt,
+      path: '/stock-transfer',
+      roles: ['manager', 'owner', 'core team'], 
     },
     {
       name: 'Reports',
       icon: FaChartBar,
       path: '/reports',
+      roles: ['manager', 'owner'],
     },
     {
       name: 'Users',
       icon: FaUsers,
       path: '/users',
+      roles: ['manager', 'owner'],
     },
     {
       name: 'Settings',
       icon: FaCog,
       path: '/settings',
+      roles: ['manager', 'owner'],
     },
   ];
+
+  const menuItems = allMenuItems.filter(item => 
+    item.roles.includes(userRole)
+  );
 
 
   const handleNavigation = (path) => {
