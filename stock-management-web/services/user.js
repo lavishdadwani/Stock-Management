@@ -34,6 +34,14 @@ const getAllUsers = (params) => {
   return apiConfig.client.get(`user/get-all${queryString}`)
 } 
 
+const getUserById = (id) => apiConfig.client.get(`user/${id}`)
+
+const updateUserById = (id, data) => apiConfig.client.patch(`user/${id}`, data)
+
+const deleteUserById = (id) => apiConfig.client.delete(`user/${id}`)
+
+const createCredentials = (data) => apiConfig.client.post('user/create-credentials', data)
+
 
 export default {
   register,
@@ -47,5 +55,9 @@ export default {
   changePassword,
   getCurrentUser,
   updateProfile,
-  getAllUsers
+  getAllUsers,
+  getUserById,
+  updateUserById,
+  deleteUserById,
+  createCredentials
 }

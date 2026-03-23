@@ -67,14 +67,14 @@ const validatePhoneNumber = (number) => {
 };
 
 const validateRole = (role) => {
-  const validRoles = ['manager', 'owner', 'core team'];
+  const validRoles = ['manager', 'owner', 'core_team', 'super_admin'];
   
   if (!role) {
-    return { isValid: true, value: 'manager' }; // Default role
+    return { isValid: true, value: 'core_team' }; // Default role
   }
   
   if (!validRoles.includes(role)) {
-    return { isValid: false, error: 'Role must be one of: manager, owner, core team' };
+    return { isValid: false, error: 'Role must be one of: manager, owner, core_team' };
   }
   
   return { isValid: true, value: role };
@@ -124,6 +124,81 @@ const validateRegisterData = (data) => {
     validated.role = roleValidation.value;
   }
   
+  return {
+    isValid: Object.keys(errors).length === 0,
+    errors,
+    data: validated,
+  };
+};
+
+/**
+ * Partial update for manager/owner (name, number, role, isActive, optional password, photo)
+ */
+const validateAdminUserUpdateData = (data) => {
+  const errors = {};
+  const validated = {};
+
+  if (!data || typeof data !== 'object') {
+    return {
+      isValid: false,
+      errors: { body: 'Invalid request body' },
+      data: {},
+    };
+  }
+
+  if (data.name !== undefined && data.name !== null && String(data.name).trim() !== '') {
+    const nameValidation = validateName(data.name);
+    if (!nameValidation.isValid) {
+      errors.name = nameValidation.error;
+    } else {
+      validated.name = nameValidation.value;
+    }
+  }
+
+  if (data.number !== undefined && data.number !== null && String(data.number).trim() !== '') {
+    const phoneValidation = validatePhoneNumber(data.number);
+    if (!phoneValidation.isValid) {
+      errors.number = phoneValidation.error;
+    } else {
+      validated.number = phoneValidation.value;
+    }
+  }
+
+  if (data.role !== undefined && data.role !== null && String(data.role).trim() !== '') {
+    const roleValidation = validateRole(data.role);
+    if (!roleValidation.isValid) {
+      errors.role = roleValidation.error;
+    } else {
+      validated.role = roleValidation.value;
+    }
+  }
+
+  if (data.isActive !== undefined && data.isActive !== null && data.isActive !== '') {
+    validated.isActive = data.isActive === true || data.isActive === 'true';
+  }
+
+  if (
+    data.password !== undefined &&
+    data.password !== null &&
+    String(data.password).trim() !== ''
+  ) {
+    const passwordValidation = validatePassword(data.password);
+    if (!passwordValidation.isValid) {
+      errors.password = passwordValidation.error;
+    } else {
+      validated.password = passwordValidation.value;
+    }
+  }
+
+  if (data.photo !== undefined) {
+    validated.photo =
+      typeof data.photo === 'string' && data.photo.trim() !== '' ? data.photo.trim() : null;
+  }
+
+  if (Object.keys(validated).length === 0) {
+    errors._general = 'Provide at least one field to update';
+  }
+
   return {
     isValid: Object.keys(errors).length === 0,
     errors,
@@ -288,7 +363,7 @@ const validateItemProduced = (item) => {
   
   // Validate unit if provided
   if (item.unit) {
-    const validUnits = ['kg', 'g', 'ton'];
+    const validUnits = ['kg', 'g', 'pieces'];
     if (!validUnits.includes(item.unit.toLowerCase())) {
       errors.unit = `Unit must be one of: ${validUnits.join(', ')}`;
     }
@@ -423,6 +498,7 @@ export {
   validateChangePasswordData,
   validateResetPasswordData,
   validateProfileUpdateData,
+  validateAdminUserUpdateData,
   validateCheckoutData,
   validateQuantity,
   validateWireType,

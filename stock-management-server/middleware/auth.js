@@ -20,7 +20,7 @@ const Auth = async function (req, res, next) {
     }
 
     if (!user.isActive) {
-      return res.unauthorized('Account is deactivated.');
+      return res.unauthorized('Account is deactivated. Please contact your administrator.');
     }
 
     // Verify token signature

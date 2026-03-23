@@ -1,6 +1,7 @@
-import Attendance from '../models/attendance.model.js';
+ import Attendance from '../models/attendance.model.js';
 import ItemProduced from '../models/itemProduced.model.js';
-import Stock from '../models/stock.model.js';
+import StockTransfer from '../models/stockTransfer.model.js';
+import { mongoose } from 'mongoose';
 import { validateCheckoutData } from '../utils/validation.js';
 
 // Check-in - Start work session
@@ -85,13 +86,15 @@ export const checkOut = async (req, res) => {
     }
 
     const wireUsedQuantityKg = parseFloat(wireUsedQuantity) || 0;
-    
-    const wireTypeForStock = wireUsedType === 'aluminium' ? 'Aluminium' : 'Copper';
-    
-    const wireStock = await Stock.aggregate([
+    const wireTypeForStock = wireUsedType === 'aluminium' ? 'aluminium' : 'copper';
+
+    // Available wire for this core team member is tracked in StockTransfer (toUserId=user)
+    const wireTransferAgg = await StockTransfer.aggregate([
       {
         $match: {
-          itemName: wireTypeForStock
+          toUserId: new mongoose.Types.ObjectId(userId),
+          itemName: wireTypeForStock,
+          status: 'completed'
         }
       },
       {
@@ -102,7 +105,7 @@ export const checkOut = async (req, res) => {
       }
     ]);
 
-    const availableWire = wireStock.length > 0 ? wireStock[0].totalQuantity : 0;
+    const availableWire = wireTransferAgg.length > 0 ? wireTransferAgg[0].totalQuantity : 0;
 
     if (availableWire < wireUsedQuantityKg) {
       return res.error(
@@ -119,41 +122,46 @@ export const checkOut = async (req, res) => {
 
     // Start transaction-like operations
     try {
-    // 1. Deduct wire from stock
-      const wireStockEntry = new Stock({
+      // 1. Deduct wire from the user's transferred stock (negative entry)
+      const wireConsumptionTransfer = new StockTransfer({
+        fromUserId: userId,
+        toUserId: userId,
         itemName: wireTypeForStock,
-        quantity: -wireUsedQuantityKg, // Negative to deduct
-        unit: 'kg',
-        stockType: 'raw',
-        category: 'wire',
-        addedBy: userId,
-        description: `Used for production - Check-out from ${attendance.checkInTime}`
+        quantity: -wireUsedQuantityKg,
+        unit: 'kg',    
+        transferDate: new Date(),
+        description: `Wire used for production - Check-out from ${attendance.checkInTime}`,
+        status: 'completed',
+        entryType: 'consume_wire'
       });
-      await wireStockEntry.save();
+      await wireConsumptionTransfer.save();
 
-      // 2. Add scrap to stock if provided
-      if (scrapQuantity && scrapQuantity > 0) {
-        const scrapStockEntry = new Stock({
+      // 2. Add scrap to the user's transferred stock (positive entry)
+      if (scrapQuantity && parseFloat(scrapQuantity) > 0) {
+        const scrapTransfer = new StockTransfer({
+          fromUserId: userId,
+          toUserId: userId,
           itemName: 'Scrap',
           quantity: parseFloat(scrapQuantity),
           unit: 'kg',
-          stockType: 'raw',
-          category: 'scrap',
-          addedBy: userId,
-          description: `Scrap from production - Check-out from ${attendance.checkInTime}`
+          transferDate: new Date(),
+          description: `Scrap generated from production - Check-out from ${attendance.checkInTime}`,
+          status: 'completed',
+          entryType: 'generate_scrap'
         });
-        await scrapStockEntry.save();
+        await scrapTransfer.save();
       }
 
       // 3. Create item produced record
       let savedItemProduced = null;
       if (itemProduced && itemProduced.itemName) {
         const itemProducedRecord = new ItemProduced({
+          source: 'produced',
           attendanceId: attendance._id,
           userId,
           itemName: itemProduced.itemName.trim(),
           quantity: parseFloat(itemProduced.quantity),
-          unit: itemProduced.unit || 'kg',
+          unit: itemProduced.unit || 'pieces',
           productionDate: new Date(),
           description: description || itemProduced.description || null,
           wireUsedType: wireUsedType,
