@@ -13,7 +13,7 @@ const AttendanceSchema = new Schema(
     itemId: {
       type: mongoose.Schema.Types.ObjectId,
       required: false,
-      ref: 'ItemProduced',
+      ref: 'itemProduced',
       default: null,
       index: true
     },
@@ -56,7 +56,7 @@ AttendanceSchema.statics.isCheckedIn = async function(userId) {
   return attendance ? attendance._id : null;
 };
 
-const Attendance = mongoose.model('Attendance', AttendanceSchema);
+const Attendance = mongoose.model('attendance', AttendanceSchema);
 
 export default Attendance;
 

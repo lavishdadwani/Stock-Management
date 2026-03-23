@@ -19,13 +19,12 @@ const StockTransferSchema = new Schema(
     itemName: {
       type: String,
       required: true,
-      enum: ['Aluminium', 'Copper', 'Scrap'],
+      enum: ['aluminium', 'copper', 'scrap'],
       index: true
     },
     quantity: {
       type: Number,
       required: true,
-      min: 0
     },
     unit: {
       type: String,
@@ -48,10 +47,16 @@ const StockTransferSchema = new Schema(
       enum: ['pending', 'completed', 'cancelled'],
       default: 'completed'
     },
+    entryType: {
+      type: String,
+      enum: ['transfer_in', 'consume_wire', 'generate_scrap'],
+      default: 'transfer_in',
+      index: true
+    },
     stockEntryId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Stock',
-      required: true,
+      ref: 'stock',
+      required: false,
       index: true
     }
   },
@@ -65,7 +70,7 @@ StockTransferSchema.index({ itemName: 1 });
 StockTransferSchema.index({ transferDate: -1 });
 StockTransferSchema.index({ fromUserId: 1, toUserId: 1 });
 
-const StockTransfer = mongoose.model('StockTransfer', StockTransferSchema);
+const StockTransfer = mongoose.model('stockTransfer', StockTransferSchema);
 
 export default StockTransfer;
 

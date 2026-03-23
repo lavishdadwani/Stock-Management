@@ -26,8 +26,8 @@ const UserSchema = new Schema(
     role: {
       type: String,
       required: true,
-      enum: ['manager', 'owner', 'core team'],
-      default: 'manager'
+      enum: ['manager', 'owner', 'core_team', 'super_admin'],
+      default: 'core_team'
     },
     password: { 
       type: String, 

@@ -7,7 +7,7 @@ const StockSchema = new Schema(
     itemName: {
       type: String,
       required: true,
-      enum: ['Aluminium', 'Copper', 'Scrap']
+      enum: ['aluminium', 'copper', 'scrap']
     },
     quantity: {
       type: Number,
@@ -50,7 +50,7 @@ StockSchema.index({ itemName: 1 });
 StockSchema.index({ stockType: 1 });
 StockSchema.index({ addedBy: 1 });
 
-const Stock = mongoose.model('Stock', StockSchema);
+const Stock = mongoose.model('stock', StockSchema);
 
 export default Stock;
 
