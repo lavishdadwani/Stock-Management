@@ -1,7 +1,42 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Card from '../Card';
 
-const StockCard = ({ name, quantity, unit, color = 'blue' }) => {
+const DURATION_MS = 500;
+const easeOutCubic = (t) => 1 - (1 - t) ** 3;
+
+const StockCard = ({ name, quantity, unit, color = 'blue', subtitle = null }) => {
+  const [displayValue, setDisplayValue] = useState(quantity);
+  const displayValueRef = useRef(quantity);
+  const rafRef = useRef(null);
+  const startRef = useRef(null);
+
+  displayValueRef.current = displayValue;
+
+  useEffect(() => {
+    const target = Number(quantity) || 0;
+    const start = displayValueRef.current;
+    if (start === target) return;
+
+    const tick = (now) => {
+      if (!startRef.current) startRef.current = now;
+      const elapsed = now - startRef.current;
+      const progress = Math.min(elapsed / DURATION_MS, 1);
+      const eased = easeOutCubic(progress);
+      setDisplayValue(start + (target - start) * eased);
+
+      if (progress < 1) {
+        rafRef.current = requestAnimationFrame(tick);
+      } else {
+        startRef.current = null;
+      }
+    };
+
+    rafRef.current = requestAnimationFrame(tick);
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, [quantity]);
+
   const colorClasses = {
     blue: 'bg-gradient-to-br from-blue-500 to-blue-600',
     orange: 'bg-gradient-to-br from-orange-500 to-orange-600',
@@ -24,9 +59,14 @@ const StockCard = ({ name, quantity, unit, color = 'blue' }) => {
             {name}
           </p>
           <h2 className="text-4xl font-bold mb-2">
-            {quantity.toLocaleString()}
+            {displayValue.toLocaleString(undefined, { maximumFractionDigits: 2, minimumFractionDigits: 0 })}
           </h2>
           <p className={`${textColorClasses[color]} text-sm`}>{unit}</p>
+          {subtitle ? (
+            <p className={`${textColorClasses[color]} text-xs mt-2 opacity-90 leading-snug`}>
+              {subtitle}
+            </p>
+          ) : null}
         </div>
         <div className="bg-white bg-opacity-20 rounded-full p-4">
           <svg

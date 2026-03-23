@@ -34,10 +34,15 @@ const Login = () => {
         dispatch(showSnackbar({ message: 'Login successful!', severity: 'success' }));
         navigate('/');
       } else {
-        dispatch(showSnackbar({ 
-          message: result.payload || 'Login failed. Please try again.', 
-          severity: 'error' 
-        }));
+        const msg = result.payload || 'Login failed. Please try again.';
+        const inactive =
+          typeof msg === 'string' && msg.toLowerCase().includes('inactive');
+        dispatch(
+          showSnackbar({
+            message: msg,
+            severity: inactive ? 'warning' : 'error'
+          })
+        );
       }
     } catch (err) {
       dispatch(showSnackbar({ 
@@ -119,7 +124,7 @@ const Login = () => {
               Sign in
             </Button>
 
-            <div className="text-center">
+            {/* <div className="text-center">
               <p className="text-sm text-gray-600">
                 Don't have an account?{' '}
                 <Link
@@ -129,7 +134,7 @@ const Login = () => {
                   Sign up
                 </Link>
               </p>
-            </div>
+            </div> */}
           </form>
         </Card>
       </div>

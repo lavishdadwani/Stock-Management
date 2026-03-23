@@ -1,180 +1,196 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Button from '../../Button';
 import Input from '../../Input';
 import Select from '../../Select';
-import attendanceAPI from '../../../../services/attendance';
+import stockTransferAPI from '../../../../services/stockTransfer';
+import { PRODUCIBLE_ITEMS } from '../../../data/producibleItems';
+import { useForm } from 'react-hook-form';
 
 const CheckoutForm = ({ onSubmit, onCancel, loading: externalLoading = false }) => {
-  const [formData, setFormData] = useState({
-    wireUsedType: '',
-    wireUsedQuantity: '',
-    itemProduced: {
-      itemName: '',
-      quantity: '',
-      unit: 'kg'
-    },
-    scrapQuantity: '',
-    description: ''
-  });
-  const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
-  const [producibleItems, setProducibleItems] = useState([]);
 
+  const producibleItems = useMemo(() => PRODUCIBLE_ITEMS, []);
+
+  const {
+    register,
+    handleSubmit,
+    watch,
+    setValue,
+    setError,
+    clearErrors,
+    reset,
+    formState: { errors }
+  } = useForm({
+    defaultValues: {
+      wireUsedType: '',
+      wireAvailableQuantity: 0,
+      wireUsedQuantity: 0,
+      itemProduced: {
+        itemName: '',
+        quantity: '',
+        unit: 'pieces'
+      },
+      scrapQuantity: '',
+      description: ''
+    },
+    mode: 'onChange'
+  });
+
+  const wireUsedType = watch('wireUsedType');
+  const wireAvailableQuantity = watch('wireAvailableQuantity');
+  const wireUsedQuantity = watch('wireUsedQuantity');
+  const itemProducedName = watch('itemProduced.itemName');
+  const itemProducedQty = watch('itemProduced.quantity');
+
+  const producibleItemsForWire = useMemo(() => {
+    if (!wireUsedType) return [];
+    return producibleItems.filter((i) => i.wireUsedType === wireUsedType);
+  }, [producibleItems, wireUsedType]);
+
+  const getSelectedProducedItem = (itemName) =>
+    producibleItemsForWire.find((i) => i.itemName === itemName || i.value === itemName) || null;
+
+  // When wire type changes, clear item selection if it doesn't belong to that wire type.
   useEffect(() => {
-    fetchProducibleItems();
-  }, []);
-
-  const fetchProducibleItems = async () => {
-    try {
-      const response = await attendanceAPI.getProducibleItems();
-      if (response.ok && response.data?.data) {
-        const items = response.data.data.map(item => ({
-          value: item.itemName,
-          label: item.itemName
-        }));
-        setProducibleItems(items);
-      }
-    } catch (error) {
-      console.error('Error fetching producible items:', error);
-    } finally {
-    }
-  };
-
-  const handleChange = (field, value) => {
-    if (field.startsWith('itemProduced.')) {
-      const nestedField = field.replace('itemProduced.', '');
-      setFormData(prev => ({
-        ...prev,
-        itemProduced: {
-          ...prev.itemProduced,
-          [nestedField]: value
-        }
-      }));
-      // Clear error for this field
-      if (errors[`itemProduced.${nestedField}`]) {
-        setErrors(prev => {
-          const newErrors = { ...prev };
-          delete newErrors[`itemProduced.${nestedField}`];
-          return newErrors;
-        });
-      }
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        [field]: value
-      }));
-      // Clear error for this field
-      if (errors[field]) {
-        setErrors(prev => {
-          const newErrors = { ...prev };
-          delete newErrors[field];
-          return newErrors;
-        });
-      }
-    }
-  };
-
-  const validate = () => {
-    const newErrors = {};
-
-    if (!formData.wireUsedType) {
-      newErrors.wireUsedType = 'Wire type is required';
-    }
-
-    if (!formData.wireUsedQuantity || parseFloat(formData.wireUsedQuantity) <= 0) {
-      newErrors.wireUsedQuantity = 'Wire quantity must be greater than 0';
-    }
-
-    if (!formData.itemProduced.itemName) {
-      newErrors['itemProduced.itemName'] = 'Item name is required';
-    }
-
-    if (!formData.itemProduced.quantity || parseFloat(formData.itemProduced.quantity) <= 0) {
-      newErrors['itemProduced.quantity'] = 'Item quantity must be greater than 0';
-    }
-
-    if (formData.scrapQuantity && parseFloat(formData.scrapQuantity) < 0) {
-      newErrors.scrapQuantity = 'Scrap quantity cannot be negative';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    if (!validate()) {
+    if (!wireUsedType) {
+      setValue('itemProduced.itemName', '', { shouldValidate: true, shouldDirty: true });
+      setValue('wireUsedQuantity', 0, { shouldValidate: true, shouldDirty: true });
       return;
     }
 
+    const selected = getSelectedProducedItem(itemProducedName);
+    if (!selected && itemProducedName) {
+      setValue('itemProduced.itemName', '', { shouldValidate: true, shouldDirty: true });
+      setValue('wireUsedQuantity', 0, { shouldValidate: true, shouldDirty: true });
+    }
+    setValue('itemProduced.unit', 'pieces');
+  }, [wireUsedType, itemProducedName, setValue]);
+
+  // When piece quantity changes, recompute wire used quantity based on selected item.
+  useEffect(() => {
+    const selected = getSelectedProducedItem(itemProducedName);
+    if (!selected) {
+      if ((Number(wireUsedQuantity) || 0) !== 0) {
+        setValue('wireUsedQuantity', 0, { shouldValidate: true, shouldDirty: true });
+      }
+      return;
+    }
+
+    const pieces = Number(itemProducedQty) || 0;
+    const nextUsed = Number((pieces * selected.wireKgPerPiece).toFixed(2));
+    if ((Number(wireUsedQuantity) || 0) !== nextUsed) {
+      setValue('wireUsedQuantity', nextUsed, { shouldValidate: true, shouldDirty: true });
+    }
+  }, [itemProducedName, itemProducedQty, wireUsedQuantity, producibleItemsForWire, setValue]);
+
+  // Wire used cannot exceed wire available
+  useEffect(() => {
+    const used = Number(wireUsedQuantity) || 0;
+    const available = Number(wireAvailableQuantity) || 0;
+
+    if (used > available) {
+      setError('wireUsedQuantity', {
+        type: 'validate',
+        message: 'Wire used quantity cannot be greater than wire available quantity'
+      });
+    } else {
+      clearErrors('wireUsedQuantity');
+    }
+  }, [wireUsedQuantity, wireAvailableQuantity, setError, clearErrors]);
+
+  // Fetch wire available quantity whenever wire type changes (core team scope enforced by backend).
+  useEffect(() => {
+    const wire = wireUsedType;
+    if (!wire) {
+      setValue('wireAvailableQuantity', 0, { shouldValidate: true, shouldDirty: true });
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const response = await stockTransferAPI.getStockTransferQuantities({ wire });
+        if (!cancelled && response?.ok && response.data?.data) {
+          const data = response.data.data;
+          const available =
+            wire === 'aluminium'
+              ? data.aluminium?.quantity
+              : wire === 'copper'
+                ? data.copper?.quantity
+                : wire === 'scrap'
+                  ? data.scrap?.quantity
+                  : 0;
+          setValue('wireAvailableQuantity', Number(available) || 0, {
+            shouldValidate: true,
+            shouldDirty: true
+          });
+        }
+      } catch {
+        if (!cancelled) {
+          setValue('wireAvailableQuantity', 0, { shouldValidate: true, shouldDirty: true });
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [wireUsedType, setValue]);
+
+  const onValidSubmit = async (values) => {
     setLoading(true);
     try {
       const checkoutData = {
-        wireUsedType: formData.wireUsedType,
-        wireUsedQuantity: parseFloat(formData.wireUsedQuantity),
+        wireUsedType: values.wireUsedType,
+        wireUsedQuantity: parseFloat(values.wireUsedQuantity),
         itemProduced: {
-          itemName: formData.itemProduced.itemName,
-          quantity: parseFloat(formData.itemProduced.quantity),
-          unit: formData.itemProduced.unit
+          itemName: values.itemProduced.itemName,
+          quantity: parseFloat(values.itemProduced.quantity),
+          unit: 'pieces'
         },
-        scrapQuantity: formData.scrapQuantity ? parseFloat(formData.scrapQuantity) : null,
-        description: formData.description || null
+        scrapQuantity: values.scrapQuantity ? parseFloat(values.scrapQuantity) : null,
+        description: values.description || null
       };
 
       const response = await onSubmit(checkoutData);
 
       if (response?.ok) {
-        // Reset form on success
-        setFormData({
-          wireUsedType: '',
-          wireUsedQuantity: '',
-          itemProduced: {
-            itemName: '',
-            quantity: '',
-            unit: 'kg'
-          },
-          scrapQuantity: '',
-          description: ''
-        });
-        setErrors({});
+        reset();
+        clearErrors();
       } else {
-        const errorMessage = response?.data?.displayMessage || response?.data?.message || 'Failed to check out';
-        setErrors({ submit: errorMessage });
+        const errorMessage =
+          response?.data?.displayMessage ||
+          response?.data?.message ||
+          'Failed to check out';
+        setError('root.submit', { type: 'server', message: errorMessage });
       }
     } catch (error) {
-      setErrors({ submit: error.message || 'An error occurred while checking out' });
+      setError('root.submit', {
+        type: 'server',
+        message: error?.message || 'An error occurred while checking out'
+      });
     } finally {
       setLoading(false);
     }
   };
 
   const handleCancel = () => {
-    setFormData({
-      wireUsedType: '',
-      wireUsedQuantity: '',
-      itemProduced: {
-        itemName: '',
-        quantity: '',
-        unit: 'kg'
-      },
-      scrapQuantity: '',
-      description: ''
-    });
-    setErrors({});
+    reset();
+    clearErrors();
     onCancel();
   };
 
   const isLoading = loading || externalLoading;
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit(onValidSubmit)} className="space-y-4">
       {/* Wire Used Type */}
       <Select
         label="Wire Used Type"
         name="wireUsedType"
-        value={formData.wireUsedType}
-        onChange={(e) => handleChange('wireUsedType', e.target.value)}
+        register={register('wireUsedType', {
+          required: 'Wire type is required'
+        })}
         error={errors.wireUsedType}
         options={[
           { value: 'aluminium', label: 'Aluminium' },
@@ -184,49 +200,55 @@ const CheckoutForm = ({ onSubmit, onCancel, loading: externalLoading = false }) 
         required
         disabled={isLoading}
       />
-
+      <div className="grid grid-cols-2 gap-4">
+      {/* Wire Available Quantity */}
+      <Input
+        label="Wire Available Quantity (kg)"
+        name="wireAvailableQuantity"
+        type="number"
+        register={register('wireAvailableQuantity')}
+        placeholder="0"
+        readOnly
+        step="0.01"
+        min="0"
+      />
       {/* Wire Used Quantity */}
       <Input
         label="Wire Used Quantity (kg)"
         name="wireUsedQuantity"
         type="number"
-        value={formData.wireUsedQuantity}
-        onChange={(e) => handleChange('wireUsedQuantity', e.target.value)}
+        register={register('wireUsedQuantity', {
+          required: 'Wire quantity must be greater than 0',
+          validate: (val) => {
+            const used = Number(val) || 0;
+            const available = Number(watch('wireAvailableQuantity')) || 0;
+            if (used <= 0) return 'Wire quantity must be greater than 0';
+            return used <= available || 'Wire used quantity cannot be greater than wire available quantity';
+          }
+        })}
         error={errors.wireUsedQuantity}
-        placeholder="Enter quantity in kg"
+        placeholder="0"
         required
-        disabled={isLoading}
+        readOnly
         step="0.01"
         min="0"
       />
+      </div>
 
       {/* Item Produced Name */}
       <div>
-        <Input
+        <Select
           label="Item Produced"
           name="itemProduced.itemName"
-          type="text"
-          value={formData.itemProduced.itemName}
-          onChange={(e) => handleChange('itemProduced.itemName', e.target.value)}
+          register={register('itemProduced.itemName', {
+            required: 'Item name is required'
+          })}
           error={errors['itemProduced.itemName']}
-          placeholder="Enter item name"
+          options={producibleItemsForWire.map((i) => ({ value: i.value, label: i.label }))}
+          placeholder="Select item"
           required
-          disabled={isLoading}
-          list="producible-items-list"
+          disabled={isLoading || !wireUsedType}
         />
-        {/* {producibleItems.length > 0 && (
-          <datalist id="producible-items-list">
-            {producibleItems.map((item) => (
-              <option key={item.value} value={item.value} />
-            ))}
-          </datalist>
-        )}
-        {producibleItems.length > 0 && (
-          <p className="mt-1 text-xs text-gray-500">
-            Suggestions: {producibleItems.slice(0, 5).map(item => item.label).join(', ')}
-            {producibleItems.length > 5 && `...`}
-          </p>
-        )} */}
       </div>
 
       {/* Item Produced Quantity */}
@@ -235,8 +257,10 @@ const CheckoutForm = ({ onSubmit, onCancel, loading: externalLoading = false }) 
           label="Item Produced Quantity"
           name="itemProduced.quantity"
           type="number"
-          value={formData.itemProduced.quantity}
-          onChange={(e) => handleChange('itemProduced.quantity', e.target.value)}
+          register={register('itemProduced.quantity', {
+            required: 'Item quantity must be greater than 0',
+            validate: (val) => (Number(val) || 0) > 0 || 'Item quantity must be greater than 0'
+          })}
           error={errors['itemProduced.quantity']}
           placeholder="Enter quantity"
           required
@@ -248,15 +272,11 @@ const CheckoutForm = ({ onSubmit, onCancel, loading: externalLoading = false }) 
         <Select
           label="Unit"
           name="itemProduced.unit"
-          value={formData.itemProduced.unit}
-          onChange={(e) => handleChange('itemProduced.unit', e.target.value)}
+          register={register('itemProduced.unit')}
           options={[
-            { value: 'kg', label: 'kg' },
-            { value: 'g', label: 'g' },
-            { value: 'ton', label: 'ton' }
+            { value: 'pieces', label: 'pieces' }
           ]}
-          required
-          disabled={isLoading}
+          disabled
         />
       </div>
 
@@ -265,8 +285,12 @@ const CheckoutForm = ({ onSubmit, onCancel, loading: externalLoading = false }) 
         label="Scrap Quantity (kg) - Optional"
         name="scrapQuantity"
         type="number"
-        value={formData.scrapQuantity}
-        onChange={(e) => handleChange('scrapQuantity', e.target.value)}
+        register={register('scrapQuantity', {
+          validate: (val) => {
+            if (val === '' || val === null || val === undefined) return true;
+            return (Number(val) || 0) >= 0 || 'Scrap quantity cannot be negative';
+          }
+        })}
         error={errors.scrapQuantity}
         placeholder="Enter scrap quantity in kg"
         disabled={isLoading}
@@ -281,8 +305,7 @@ const CheckoutForm = ({ onSubmit, onCancel, loading: externalLoading = false }) 
         </label>
         <textarea
           name="description"
-          value={formData.description}
-          onChange={(e) => handleChange('description', e.target.value)}
+          {...register('description')}
           placeholder="Enter any additional notes"
           disabled={isLoading}
           rows={3}
@@ -291,9 +314,9 @@ const CheckoutForm = ({ onSubmit, onCancel, loading: externalLoading = false }) 
       </div>
 
       {/* Submit Error */}
-      {errors.submit && (
+      {errors?.root?.submit && (
         <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-          <p className="text-sm text-red-600">{errors.submit}</p>
+          <p className="text-sm text-red-600">{errors.root.submit.message}</p>
         </div>
       )}
 
