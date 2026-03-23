@@ -67,7 +67,7 @@ export const validatePhoneNumber = (number) => {
 };
 
 export const validateRole = (role, required = false) => {
-  const validRoles = ['manager', 'owner', 'core team'];
+  const validRoles = ['manager', 'owner', 'core_team'];
   
   if (!role || role.trim() === '') {
     if (required) {

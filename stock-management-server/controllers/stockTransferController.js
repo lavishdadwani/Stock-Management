@@ -60,7 +60,7 @@ export const transferStock = async (req, res) => {
       );
     }
 
-    if (toUser.role !== 'core team') {
+    if (toUser.role !== 'core_team') {
       return res.error(
         'Invalid recipient',
         null,
@@ -430,7 +430,7 @@ export const updateStockTransfer = async (req, res) => {
         );
       }
 
-      if (toUser.role !== 'core team') {
+      if (toUser.role !== 'core_team') {
         return res.error(
           'Invalid recipient',
           null,
@@ -526,7 +526,7 @@ export const getStockTransferQuantities = async (req, res) => {
       pipeline.push({
         $match: { toUserId: new mongoose.Types.ObjectId(toUserId) }
       });
-    } else if (userRole === 'core team') {
+    } else if (userRole === 'core_team') {
       pipeline.push({
         $match: { toUserId: new mongoose.Types.ObjectId(userId) }
       });

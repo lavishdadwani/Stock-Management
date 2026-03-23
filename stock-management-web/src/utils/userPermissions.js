@@ -7,7 +7,7 @@ export function canManageUserRecord(actor, target) {
   if (!actor?.id || !targetId) return false;
   if (String(actor.id) === String(targetId)) return false;
   if (target.role === 'owner') return false;
-  if (actor.role === 'owner') return ['manager', 'core team'].includes(target.role);
-  if (actor.role === 'manager') return target.role === 'core team';
+  if (actor.role === 'owner') return ['manager', 'core_team'].includes(target.role);
+  if (actor.role === 'manager') return target.role === 'core_team';
   return false;
 }

@@ -16,7 +16,7 @@ import Select from '../components/Select';
 const StockTransfer = () => {
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
-  const isCoreTeam = user?.role === 'core team';
+  const isCoreTeam = user?.role === 'core_team';
   const [currentPage, setCurrentPage] = useState(1);
   const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -48,7 +48,7 @@ const StockTransfer = () => {
 
   const fetchCoreTeamMembers = async () => {
     try {
-      const response = await userAPI.getAllUsers({ role: 'core team', isActive: 'true' });
+      const response = await userAPI.getAllUsers({ role: 'core_team', isActive: 'true' });
       if (response.ok && response.data?.data) {
         setCoreTeamMembers(response.data.data);
       }

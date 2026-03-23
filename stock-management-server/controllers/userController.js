@@ -581,11 +581,11 @@ const assertCanManageUser = (actorRole, actorId, targetUser) => {
     return { ok: false, message: 'Owner accounts cannot be updated or deleted from the users module.' };
   }
   if (actorRole === 'owner') {
-    if (['manager', 'core team'].includes(targetUser.role)) return { ok: true };
+    if (['manager', 'core_team'].includes(targetUser.role)) return { ok: true };
     return { ok: false, message: 'You do not have permission to manage this user.' };
   }
   if (actorRole === 'manager') {
-    if (targetUser.role === 'core team') return { ok: true };
+    if (targetUser.role === 'core_team') return { ok: true };
     return { ok: false, message: 'Managers can only manage core team members.' };
   }
   return { ok: false, message: 'Access denied.' };
@@ -620,7 +620,7 @@ const updateUserByAdmin = async (req, res) => {
 
     if (patch.role !== undefined) {
       if (req.userRole === 'owner') {
-        if (!['manager', 'core team'].includes(patch.role)) {
+        if (!['manager', 'core_team'].includes(patch.role)) {
           return res.error(
             'Invalid role',
             null,
@@ -629,7 +629,7 @@ const updateUserByAdmin = async (req, res) => {
           );
         }
       } else if (req.userRole === 'manager') {
-        if (patch.role !== 'core team') {
+        if (patch.role !== 'core_team') {
           return res.error(
             'Invalid role',
             null,
@@ -710,7 +710,7 @@ const createUserCredentials = async (req, res) => {
     // Owner -> manager/core team
     // Manager -> core team only
     if (creatorRole === 'owner') {
-      if (!['manager', 'core team'].includes(role)) {
+      if (!['manager', 'core_team'].includes(role)) {
         return res.error(
           'Invalid role selection',
           null,
@@ -719,7 +719,7 @@ const createUserCredentials = async (req, res) => {
         );
       }
     } else if (creatorRole === 'manager') {
-      if (role !== 'core team') {
+      if (role !== 'core_team') {
         return res.error(
           'Invalid role selection',
           null,

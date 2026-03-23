@@ -4,7 +4,7 @@ import { getPaginationParams, formatPaginatedResponse } from '../utils/paginatio
 
 const buildStockVisibilityQuery = (userId, userRole, extra = {}) => {
   const query = { ...extra };
-  if (userRole === 'core team') {
+  if (userRole === 'core_team') {
     query.$or = [{ userId }, { source: 'purchased' }];
   }
   return query;
@@ -116,7 +116,7 @@ export const getItemProducedTotals = async (req, res) => {
 
     const baseMatch = { unit: 'pieces' };
     const match =
-      userRole === 'core team'
+      userRole === 'core_team'
         ? {
             ...baseMatch,
             $or: [{ userId }, { source: 'purchased' }]

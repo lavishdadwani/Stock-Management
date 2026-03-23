@@ -16,7 +16,7 @@ const Dashboard = () => {
       {userRole === 'owner' && (
          <OwnerDashboardView />
       )}
-      {userRole === 'core team' && (
+      {userRole === 'core_team' && (
          <CoreTeamDashboard />
       )}
     </Layout>

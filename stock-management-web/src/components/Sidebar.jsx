@@ -39,7 +39,7 @@ const Sidebar = ({ isOpen: controlledIsOpen, onToggle }) => {
       name: 'Dashboard',
       icon: FaHome,
       path: '/',
-      roles: ['manager', 'owner', 'core team'], 
+      roles: ['manager', 'owner', 'core_team'], 
     },
     {
       name: 'Stock',
@@ -57,7 +57,7 @@ const Sidebar = ({ isOpen: controlledIsOpen, onToggle }) => {
       name: 'Stock Transfer',
       icon: FaExchangeAlt,
       path: '/stock-transfer',
-      roles: ['manager', 'owner', 'core team'], 
+      roles: ['manager', 'owner', 'core_team'], 
     },
     // {
     //   name: 'Reports',

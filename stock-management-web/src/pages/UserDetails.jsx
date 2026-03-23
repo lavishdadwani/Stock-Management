@@ -28,11 +28,11 @@ const UserDetails = () => {
     if (actor?.role === 'owner') {
       return [
         { value: 'manager', label: 'Manager' },
-        { value: 'core team', label: 'Core Team' }
+        { value: 'core_team', label: 'Core Team' }
       ];
     }
     if (actor?.role === 'manager') {
-      return [{ value: 'core team', label: 'Core Team' }];
+      return [{ value: 'core_team', label: 'Core Team' }];
     }
     return [];
   }, [actor?.role]);
