@@ -5,7 +5,6 @@ import { getCurrentUser } from './redux/slices/authSlice'
 import Snackbar from './components/Snackbar'
 import ProtectedRoute from './components/ProtectedRoute'
 import Login from './pages/Login'
-import Register from './pages/Register'
 import ForgotPassword from './pages/ForgotPassword'
 import ResetPassword from './pages/ResetPassword'
 import Dashboard from './pages/Dashboard'
@@ -14,8 +13,12 @@ import Stock from './pages/Stock'
 import Inventory from './pages/Inventory'
 import Reports from './pages/Reports'
 import Users from './pages/Users'
+import UserDetails from './pages/UserDetails'
 import Settings from './pages/Settings'
 import StockTransfer from './pages/StockTransfer'
+import Customer from './pages/Customer'
+import CustomerDetails from './pages/CustomerDetails'
+import Sales from './pages/Sales'
 
 function App() {
   const dispatch = useDispatch()
@@ -33,13 +36,10 @@ function App() {
       <Snackbar />
       <Routes>
         <Route 
-          path="/signin" 
+          path="/signin"
           element={!isAuthenticated ? <Login /> : <Navigate to="/" />} 
         />
-        <Route 
-          path="/register" 
-          element={!isAuthenticated ? <Register /> : <Navigate to="/" />} 
-        />
+        <Route path="/register" element={<Navigate to="/signin" replace />} />
         <Route 
           path="/forgot-password" 
           element={!isAuthenticated ? <ForgotPassword /> : <Navigate to="/" />} 
@@ -96,6 +96,14 @@ function App() {
             </ProtectedRoute>
           } 
         />
+        <Route
+          path="/users/:id"
+          element={
+            <ProtectedRoute>
+              <UserDetails />
+            </ProtectedRoute>
+          }
+        />
         <Route 
           path="/settings" 
           element={
@@ -109,6 +117,30 @@ function App() {
           element={
             <ProtectedRoute>
               <StockTransfer />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/customers" 
+          element={
+            <ProtectedRoute>
+              <Customer />
+            </ProtectedRoute>
+          } 
+        />
+        <Route
+          path="/customers/:id"
+          element={
+            <ProtectedRoute>
+              <CustomerDetails />
+            </ProtectedRoute>
+          }
+        />
+        <Route 
+          path="/sales" 
+          element={
+            <ProtectedRoute>
+              <Sales />
             </ProtectedRoute>
           } 
         />
