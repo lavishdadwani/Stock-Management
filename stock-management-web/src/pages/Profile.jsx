@@ -166,7 +166,7 @@ const Profile = () => {
                   <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                     user.role === 'owner' 
                       ? 'bg-purple-100 text-purple-800'
-                      : user.role === 'core team'
+                      : user.role === 'core_team'
                       ? 'bg-green-100 text-green-800'
                       : 'bg-blue-100 text-blue-800'
                   }`}>

@@ -63,7 +63,7 @@ const Register = () => {
   const roleOptions = [
     { value: 'manager', label: 'Manager' },
     { value: 'owner', label: 'Owner' },
-    { value: 'core team', label: 'Core Team' },
+    { value: 'core_team', label: 'Core Team' },
   ];
 
   return (
@@ -145,7 +145,7 @@ const Register = () => {
               register={registerForm('role', {
                 required: 'Role is required',
                 validate: (value) => {
-                  const validRoles = ['manager', 'owner', 'core team'];
+                  const validRoles = ['manager', 'owner', 'core_team'];
                   if (!validRoles.includes(value)) {
                     return 'Role must be one of: manager, owner, core team';
                   }
