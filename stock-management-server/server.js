@@ -13,6 +13,9 @@ import stockRoutes from './routes/excelStock.routes.js';
 import stockApiRoutes from './routes/stock.routes.js';
 import attendanceRoutes from './routes/attendance.routes.js';
 import stockTransferRoutes from './routes/stockTransfer.routes.js';
+import itemProducedRoutes from './routes/itemProduced.routes.js';
+import customerRoutes from './routes/customer.routes.js';
+import saleRoutes from './routes/sale.routes.js';
 import Response from './models/response.model.js';
 import './db.js';
 
@@ -67,6 +70,9 @@ app.use("/api/stock",stockApiRoutes) // New MongoDB stock API routes
 app.use("/api/user",userRoutes)
 app.use("/api/attendance",attendanceRoutes) // Attendance and check-in/check-out routes
 app.use("/api/stock-transfer",stockTransferRoutes) // Stock transfer routes
+app.use("/api/item-produced", itemProducedRoutes) // Produced items list
+app.use("/api/customer", customerRoutes) // Customer management routes
+app.use("/api/sales", saleRoutes) // Sales module routes
 
 app.get('/', (req, res) => {
   res.send('server is working fine');

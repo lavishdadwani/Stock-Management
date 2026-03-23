@@ -7,6 +7,7 @@ import {
   validateResetPasswordData,
   validateProfileUpdateData,
   validateEmail,
+  validateAdminUserUpdateData,
 } from '../utils/validation.js';
 import {
   sendVerificationEmail,
@@ -141,8 +142,10 @@ const login = async (req, res) => {
     if (err.message === 'User not found' || err.message === 'Invalid password') {
       return res.error('Invalid email or password', null, null, 401);
     }
-    if (err.message === 'Account is deactivated') {
-      return res.unauthorized('Account is deactivated. Please contact administrator.');
+    if (err.message === 'Account is inactive' || err.message === 'Account is deactivated') {
+      return res.unauthorized(
+        'Your account is inactive. Please contact your administrator.'
+      );
     }
     return res.error('Server error during login', err, null, 500);
   }
@@ -525,7 +528,7 @@ const getAllUsers = async (req, res) => {
     }
 
     const users = await User.find(query)
-      .select('name email role isActive createdAt')
+      .select('name email number role isActive isEmailVerified createdAt')
       .sort({ name: 1 });
 
     return res.success(
@@ -537,6 +540,243 @@ const getAllUsers = async (req, res) => {
   } catch (err) {
     console.error('Get all users error:', err);
     return res.error('Server error', err, null, 500);
+  }
+};
+
+/**
+ * @route   GET /user/:id
+ * @desc    Get user by id
+ * @access  Private (Manager/Owner only)
+ */
+const getUserById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = await User.findById(id).select(
+      'name email number role isActive isEmailVerified photo lastLogin createdAt updatedAt'
+    );
+
+    if (!user) {
+      return res.error('User not found', null, 'The requested user does not exist', 404);
+    }
+
+    return res.success('User fetched successfully', user, null, 200);
+  } catch (err) {
+    console.error('Get user by id error:', err);
+    return res.error('Server error', err, null, 500);
+  }
+};
+
+/**
+ * Check if actor can manage (view already allowed) target user for update/delete.
+ */
+const assertCanManageUser = (actorRole, actorId, targetUser) => {
+  if (!targetUser) return { ok: false, message: 'User not found' };
+  if (targetUser._id.toString() === actorId.toString()) {
+    return {
+      ok: false,
+      message: 'You cannot change or delete your own account from here. Use your profile instead.',
+    };
+  }
+  if (targetUser.role === 'owner') {
+    return { ok: false, message: 'Owner accounts cannot be updated or deleted from the users module.' };
+  }
+  if (actorRole === 'owner') {
+    if (['manager', 'core team'].includes(targetUser.role)) return { ok: true };
+    return { ok: false, message: 'You do not have permission to manage this user.' };
+  }
+  if (actorRole === 'manager') {
+    if (targetUser.role === 'core team') return { ok: true };
+    return { ok: false, message: 'Managers can only manage core team members.' };
+  }
+  return { ok: false, message: 'Access denied.' };
+};
+
+/**
+ * @route   PATCH /user/:id
+ * @desc    Update user (manager/owner) — name, number, role, isActive, optional password, photo
+ * @access  Private (Manager/Owner)
+ */
+const updateUserByAdmin = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const validation = validateAdminUserUpdateData(req.body);
+
+    if (!validation.isValid) {
+      return res.error(
+        Object.values(validation.errors)[0],
+        validation.errors,
+        null,
+        422
+      );
+    }
+
+    const targetUser = await User.findById(id);
+    const check = assertCanManageUser(req.userRole, req.userId, targetUser);
+    if (!check.ok) {
+      return res.error(check.message, null, null, 403);
+    }
+
+    const patch = validation.data;
+
+    if (patch.role !== undefined) {
+      if (req.userRole === 'owner') {
+        if (!['manager', 'core team'].includes(patch.role)) {
+          return res.error(
+            'Invalid role',
+            null,
+            'Owner can only assign manager or core team',
+            403
+          );
+        }
+      } else if (req.userRole === 'manager') {
+        if (patch.role !== 'core team') {
+          return res.error(
+            'Invalid role',
+            null,
+            'Managers can only keep core team role',
+            403
+          );
+        }
+      }
+      targetUser.role = patch.role;
+    }
+
+    if (patch.name !== undefined) targetUser.name = patch.name;
+    if (patch.number !== undefined) targetUser.number = patch.number;
+    if (patch.isActive !== undefined) targetUser.isActive = patch.isActive;
+    if (patch.password !== undefined) targetUser.password = patch.password;
+    if (patch.photo !== undefined) targetUser.photo = patch.photo;
+
+    await targetUser.save();
+
+    const updated = await User.findById(id).select(
+      'name email number role isActive isEmailVerified photo lastLogin createdAt updatedAt'
+    );
+
+    return res.success('User updated successfully', updated, null, 200);
+  } catch (err) {
+    console.error('Update user by admin error:', err);
+    if (err.name === 'ValidationError') {
+      return res.error('Validation error', err.message, null, 400);
+    }
+    return res.error('Server error', err, null, 500);
+  }
+};
+
+/**
+ * @route   DELETE /user/:id
+ * @desc    Delete user (manager: core team only, owner: manager/core team)
+ * @access  Private (Manager/Owner)
+ */
+const deleteUserByAdmin = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const targetUser = await User.findById(id);
+    const check = assertCanManageUser(req.userRole, req.userId, targetUser);
+    if (!check.ok) {
+      return res.error(check.message, null, null, 403);
+    }
+
+    await User.findByIdAndDelete(id);
+    return res.success('User deleted successfully', null, null, 200);
+  } catch (err) {
+    console.error('Delete user by admin error:', err);
+    return res.error('Server error', err, null, 500);
+  }
+};
+
+/**
+ * @route   POST /user/create-credentials
+ * @desc    Create user credentials by manager/owner with role restrictions
+ * @access  Private (Manager/Owner only)
+ */
+const createUserCredentials = async (req, res) => {
+  try {
+    const validation = validateRegisterData(req.body);
+
+    if (!validation.isValid) {
+      return res.error(
+        Object.values(validation.errors)[0],
+        validation.errors,
+        null,
+        422
+      );
+    }
+
+    const { email, password, name, number, role } = validation.data;
+    const creatorRole = req.userRole;
+
+    // Role restrictions:
+    // Owner -> manager/core team
+    // Manager -> core team only
+    if (creatorRole === 'owner') {
+      if (!['manager', 'core team'].includes(role)) {
+        return res.error(
+          'Invalid role selection',
+          null,
+          'Owner can create only manager or core team credentials',
+          403
+        );
+      }
+    } else if (creatorRole === 'manager') {
+      if (role !== 'core team') {
+        return res.error(
+          'Invalid role selection',
+          null,
+          'Manager can create only core team credentials',
+          403
+        );
+      }
+    } else {
+      return res.accessDenied();
+    }
+
+    const existingUser = await User.findByEmail(email);
+    if (existingUser) {
+      return res.error(
+        'User with this email already exists',
+        null,
+        null,
+        409
+      );
+    }
+
+    const user = new User({
+      name,
+      email,
+      number,
+      password,
+      role,
+      isEmailVerified: true
+    });
+
+    await user.save();
+
+    return res.success(
+      'User credentials created successfully',
+      {
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          number: user.number,
+          role: user.role,
+          isActive: user.isActive,
+          isEmailVerified: user.isEmailVerified
+        }
+      },
+      'Credentials created successfully',
+      201
+    );
+  } catch (err) {
+    console.error('Create credentials error:', err);
+    if (err.name === 'ValidationError') {
+      return res.error('Validation error', err.message, null, 400);
+    }
+    if (err.code === 11000) {
+      return res.error('User with this email already exists', null, null, 409);
+    }
+    return res.error('Server error while creating credentials', err, null, 500);
   }
 };
 
@@ -553,5 +793,9 @@ export {
   updateProfile,
   logout,
   getAllUsers,
+  getUserById,
+  updateUserByAdmin,
+  deleteUserByAdmin,
+  createUserCredentials,
 };
 

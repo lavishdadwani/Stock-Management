@@ -4,10 +4,26 @@ const Schema = mongoose.Schema;
 
 const ItemProducedSchema = new Schema(
   {
+    /** In-house checkout production vs bought back from a customer */
+    source: {
+      type: String,
+      enum: ['produced', 'purchased'],
+      default: 'produced',
+      index: true
+    },
+    /** Set when source is `produced` (checkout). Null for purchases. */
     attendanceId: {
       type: mongoose.Schema.Types.ObjectId,
-      required: true,
-      ref: 'Attendance',
+      required: false,
+      default: null,
+      ref: 'attendance',
+      index: true
+    },
+    /** Customer we purchased finished goods from (source `purchased` only). */
+    customerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'customer',
+      default: null,
       index: true
     },
     userId: {
@@ -30,8 +46,8 @@ const ItemProducedSchema = new Schema(
     unit: {
       type: String,
       required: true,
-      enum: ['kg', 'g', 'ton'],
-      default: 'kg'
+      enum: ['kg', 'g', 'pieces'],
+      default: 'pieces'
     },
     productionDate: {
       type: Date,
@@ -57,6 +73,16 @@ const ItemProducedSchema = new Schema(
       type: Number,
       min: 0,
       default: null
+    },
+    pricePerPiece: {
+      type: Number,
+      min: 0,
+      default: null
+    },
+    totalPurchaseAmount: {
+      type: Number,
+      min: 0,
+      default: null
     }
   },
   { timestamps: true }
@@ -67,7 +93,7 @@ ItemProducedSchema.index({ userId: 1 });
 ItemProducedSchema.index({ itemName: 1 });
 ItemProducedSchema.index({ productionDate: -1 });
 
-const ItemProduced = mongoose.model('ItemProduced', ItemProducedSchema);
+const ItemProduced = mongoose.model('itemProduced', ItemProducedSchema);
 
 export default ItemProduced;
 

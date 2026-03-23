@@ -109,7 +109,8 @@ export const transferStock = async (req, res) => {
       unit: 'kg',
       transferDate: new Date(),
       description: description || null,
-      status: 'completed'
+      status: 'completed',
+      entryType: 'transfer_in'
     });
 
     // Deduct stock from inventory by creating a negative stock entry
@@ -517,41 +518,59 @@ export const getStockTransferQuantities = async (req, res) => {
   try {
     const userId = req.userId;
     const userRole = req.userRole;
-    const { toUserId } = req.query;
+    const { toUserId, wire } = req.query;
 
     const pipeline = [];
 
-    // if (toUserId) {
+    if (toUserId) {
       pipeline.push({
-        $match: {
-          toUserId: userRole == "core team" ? userId : new mongoose.Types.ObjectId(toUserId)
-        }
+        $match: { toUserId: new mongoose.Types.ObjectId(toUserId) }
       });
-    // }
+    } else if (userRole === 'core team') {
+      pipeline.push({
+        $match: { toUserId: new mongoose.Types.ObjectId(userId) }
+      });
+    }
 
+    // Optional: filter by a specific wire/item without changing response shape.
+    // Accepts: wire=aluminium|copper|scrap OR wire=Aluminium|Copper|Scrap
+    if (wire) {
+      const wireNormalized = String(wire).trim().toLowerCase();
+      const itemName =
+        wireNormalized === 'aluminium'
+          ? 'Aluminium'
+          : wireNormalized === 'copper'
+            ? 'Copper'
+            : wireNormalized === 'scrap'
+              ? 'Scrap'
+              : null;
+
+      if (itemName) {
+        pipeline.push({ $match: { itemName } });
+      }
+    }
+
+    // Single $group: compute all three sums in one pass, then round in DB
     pipeline.push({
       $group: {
-        _id: '$itemName',
-        totalQuantity: { $sum: '$quantity' }
+        _id: null,
+        aluminium: { $sum: { $cond: [{ $eq: ['$itemName', 'Aluminium'] }, '$quantity', 0] } },
+        copper: { $sum: { $cond: [{ $eq: ['$itemName', 'Copper'] }, '$quantity', 0] } },
+        scrap: { $sum: { $cond: [{ $eq: ['$itemName', 'Scrap'] }, '$quantity', 0] } }
+      }
+    });
+    pipeline.push({
+      $project: {
+        aluminium: { $round: ['$aluminium', 2] },
+        copper: { $round: ['$copper', 2] },
+        scrap: { $round: ['$scrap', 2] }
       }
     });
 
-    const quantities = await StockTransfer.aggregate(pipeline);
-
-    let aluminium = 0;
-    let copper = 0;
-    let scrap = 0;
-
-    quantities.forEach((item) => {
-      const quantity = Math.round(item.totalQuantity * 100) / 100;
-      if (item._id === 'Aluminium') {
-        aluminium = quantity;
-      } else if (item._id === 'Copper') {
-        copper = quantity;
-      } else if (item._id === 'Scrap') {
-        scrap = quantity;
-      }
-    });
+    const [doc] = await StockTransfer.aggregate(pipeline);
+    const aluminium = doc?.aluminium ?? 0;
+    const copper = doc?.copper ?? 0;
+    const scrap = doc?.scrap ?? 0;
 
     res.success(
       'Stock transfer quantities fetched successfully',
