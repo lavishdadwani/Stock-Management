@@ -25,7 +25,7 @@ const Users = () => {
     if (userRole === 'owner') {
       return [
         { value: 'manager', label: 'Manager' },
-        { value: 'core team', label: 'Core Team' }
+        { value: 'core_team', label: 'Core Team' }
       ];
     }
     if (userRole === 'manager') {
