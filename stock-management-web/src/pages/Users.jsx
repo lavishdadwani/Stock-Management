@@ -29,7 +29,7 @@ const Users = () => {
       ];
     }
     if (userRole === 'manager') {
-      return [{ value: 'core team', label: 'Core Team' }];
+      return [{ value: 'core_team', label: 'Core Team' }];
     }
     return [];
   }, [userRole]);
