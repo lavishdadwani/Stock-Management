@@ -269,11 +269,11 @@ export const getStockQuantities = async (req, res) => {
     // Map aggregated results
     quantities.forEach((item) => {
       const quantity = Math.round(item.totalQuantity * 100) / 100;
-      if (item._id === 'Aluminium') {
+      if (item._id === 'aluminium') {
         aluminium = quantity;
-      } else if (item._id === 'Copper') {
+      } else if (item._id === 'copper') {
         copper = quantity;
-      } else if (item._id === 'Scrap') {
+      } else if (item._id === 'scrap') {
         scrap = quantity;
       }
     });

@@ -447,7 +447,7 @@ const validateStockTransferData = (data) => {
   if (!data.itemName || typeof data.itemName !== 'string') {
     errors.itemName = 'Item name is required';
   } else {
-    const validItems = ['Aluminium', 'Copper', 'Scrap'];
+    const validItems = ['aluminium', 'copper', 'scrap'];
     const normalizedItem = data.itemName.trim();
     if (!validItems.includes(normalizedItem)) {
       errors.itemName = `Item name must be one of: ${validItems.join(', ')}`;

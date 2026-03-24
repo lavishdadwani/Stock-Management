@@ -538,7 +538,7 @@ export const getStockTransferQuantities = async (req, res) => {
       const wireNormalized = String(wire).trim().toLowerCase();
       const itemName =
         wireNormalized === 'aluminium'
-          ? 'Aluminium'
+          ? 'aluminium'
           : wireNormalized === 'copper'
             ? 'Copper'
             : wireNormalized === 'scrap'
@@ -554,9 +554,9 @@ export const getStockTransferQuantities = async (req, res) => {
     pipeline.push({
       $group: {
         _id: null,
-        aluminium: { $sum: { $cond: [{ $eq: ['$itemName', 'Aluminium'] }, '$quantity', 0] } },
-        copper: { $sum: { $cond: [{ $eq: ['$itemName', 'Copper'] }, '$quantity', 0] } },
-        scrap: { $sum: { $cond: [{ $eq: ['$itemName', 'Scrap'] }, '$quantity', 0] } }
+        aluminium: { $sum: { $cond: [{ $eq: ['$itemName', 'aluminium'] }, '$quantity', 0] } },
+        copper: { $sum: { $cond: [{ $eq: ['$itemName', 'copper'] }, '$quantity', 0] } },
+        scrap: { $sum: { $cond: [{ $eq: ['$itemName', 'scrap'] }, '$quantity', 0] } }
       }
     });
     pipeline.push({
@@ -576,17 +576,17 @@ export const getStockTransferQuantities = async (req, res) => {
       'Stock transfer quantities fetched successfully',
       {
         aluminium: {
-          name: 'Aluminium',
+          name: 'aluminium',
           quantity: aluminium,
           unit: 'kg'
         },
         copper: {
-          name: 'Copper',
+          name: 'copper',
           quantity: copper,
           unit: 'kg'
         },
         scrap: {
-          name: 'Scrap',
+          name: 'scrap',
           quantity: scrap,
           unit: 'kg'
         }
