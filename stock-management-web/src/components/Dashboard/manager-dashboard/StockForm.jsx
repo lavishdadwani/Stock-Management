@@ -30,9 +30,9 @@ const StockForm = ({ onSubmit, onCancel, loading, initialData = null, submitLabe
         })}
         error={errors.stockType}
         options={[
-          { value: 'Aluminium', label: 'Aluminium' },
-          { value: 'Copper', label: 'Copper' },
-          { value: 'Scrap', label: 'Scrap' },
+          { value: 'aluminium', label: 'Aluminium' },
+          { value: 'copper', label: 'Copper' },
+          { value: 'scrap', label: 'Scrap' },
         ]}
       />
 
