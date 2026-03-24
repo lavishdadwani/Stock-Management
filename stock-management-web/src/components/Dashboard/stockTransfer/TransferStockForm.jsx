@@ -126,9 +126,9 @@ useEffect(() => {
             onBlur={field.onBlur}
             error={errors.itemName?.message}
             options={[
-              { value: 'Aluminium', label: 'Aluminium' },
-              { value: 'Copper', label: 'Copper' },
-              { value: 'Scrap', label: 'Scrap' }
+              { value: 'aluminium', label: 'Aluminium' },
+              { value: 'copper', label: 'Copper' },
+              { value: 'scrap', label: 'Scrap' }
             ]}
             placeholder="Select item"
             required
