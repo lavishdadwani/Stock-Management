@@ -141,7 +141,7 @@ export const checkOut = async (req, res) => {
         const scrapTransfer = new StockTransfer({
           fromUserId: userId,
           toUserId: userId,
-          itemName: 'Scrap',
+          itemName: 'scrap',
           quantity: parseFloat(scrapQuantity),
           unit: 'kg',
           transferDate: new Date(),
