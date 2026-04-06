@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 const Schema = mongoose.Schema;
 
@@ -7,31 +7,47 @@ const AttendanceSchema = new Schema(
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       required: true,
-      ref: 'user',
-      index: true
+      ref: "user",
+      index: true,
     },
     itemId: {
       type: mongoose.Schema.Types.ObjectId,
       required: false,
-      ref: 'itemProduced',
+      ref: "itemProduced",
       default: null,
-      index: true
+      index: true,
     },
     checkInTime: {
       type: Date,
       required: true,
-      default: Date.now
+      default: Date.now,
     },
     checkOutTime: {
       type: Date,
-      default: null
+      default: null,
     },
     status: {
       type: String,
-      enum: ['checked-in', 'checked-out'],
-      default: 'checked-in',
-      index: true
-    }
+      enum: ["checked-in", "checked-out"],
+      default: "checked-in",
+      index: true,
+    },
+    /** Optional: base64 data URL or image URL captured at check-in (mobile / web). */
+    checkInPhoto: {
+      type: String,
+      default: null,
+    },
+    /** Optional GPS at check-in */
+    checkInLatitude: {
+      type: Number,
+      default: null,
+    },
+    checkInLongitude: {
+      type: Number,
+      default: null,
+    },
+    address: { type: String, default: null },
+    city: { type: String, default: null },
   },
   { timestamps: true }
 );
@@ -41,22 +57,21 @@ AttendanceSchema.index({ itemId: 1 });
 AttendanceSchema.index({ checkInTime: -1 });
 AttendanceSchema.index({ userId: 1, createdAt: -1 });
 
-AttendanceSchema.virtual('duration').get(function() {
+AttendanceSchema.virtual("duration").get(function () {
   if (this.checkOutTime && this.checkInTime) {
     return this.checkOutTime - this.checkInTime;
   }
   return null;
 });
 
-AttendanceSchema.statics.isCheckedIn = async function(userId) {
+AttendanceSchema.statics.isCheckedIn = async function (userId) {
   const attendance = await this.findOne({
     userId,
-    status: 'checked-in'
+    status: "checked-in",
   });
   return attendance ? attendance._id : null;
 };
 
-const Attendance = mongoose.model('attendance', AttendanceSchema);
+const Attendance = mongoose.model("attendance", AttendanceSchema);
 
 export default Attendance;
-

@@ -10,6 +10,7 @@ import { showSnackbar } from '../redux/slices/snackbarSlice';
 import userAPI from '../../services/user';
 import { canManageUserRecord } from '../utils/userPermissions';
 import { FaTrash, FaUserEdit } from 'react-icons/fa';
+import UserAttendanceHistory from '../components/users/UserAttendanceHistory';
 
 const UserDetails = () => {
   const { id } = useParams();
@@ -158,7 +159,7 @@ const UserDetails = () => {
 
   return (
     <Layout>
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-7xl mx-auto">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">User Details</h1>
@@ -185,12 +186,17 @@ const UserDetails = () => {
           </div>
         </div>
 
-        <Card>
-          {loading ? (
+        {loading ? (
+          <Card>
             <p className="text-gray-600">Loading user details...</p>
-          ) : !userDetails ? (
+          </Card>
+        ) : !userDetails ? (
+          <Card>
             <p className="text-gray-600">User not found.</p>
-          ) : (
+          </Card>
+        ) : (
+          <>
+            <Card>
             <div className="space-y-8">
               <div className="flex flex-col sm:flex-row gap-6 items-start">
                 <div className="shrink-0">
@@ -315,8 +321,10 @@ const UserDetails = () => {
                 </p>
               )}
             </div>
-          )}
-        </Card>
+            </Card>
+            <UserAttendanceHistory userId={userDetails._id ?? userDetails.id} />
+          </>
+        )}
       </div>
 
       {userDetails && (

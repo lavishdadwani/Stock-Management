@@ -540,9 +540,9 @@ export const getStockTransferQuantities = async (req, res) => {
         wireNormalized === 'aluminium'
           ? 'aluminium'
           : wireNormalized === 'copper'
-            ? 'Copper'
+            ? 'copper'
             : wireNormalized === 'scrap'
-              ? 'Scrap'
+              ? 'scrap'
               : null;
 
       if (itemName) {
