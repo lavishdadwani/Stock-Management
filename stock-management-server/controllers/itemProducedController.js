@@ -113,6 +113,7 @@ export const getItemProducedTotals = async (req, res) => {
   try {
     const userId = req.userId;
     const userRole = req.userRole;
+    const { startDate, endDate, month, year } = req.query;
 
     const baseMatch = { unit: 'pieces' };
     const match =
@@ -122,6 +123,26 @@ export const getItemProducedTotals = async (req, res) => {
             $or: [{ userId }, { source: 'purchased' }]
           }
         : baseMatch;
+
+    const hasMonth = month !== undefined && month !== null && month !== '';
+    const hasYear = year !== undefined && year !== null && year !== '';
+    if (hasMonth || hasYear || startDate || endDate) {
+      match.productionDate = {};
+      if (hasMonth) {
+        const m = Number(month);
+        const y = hasYear ? Number(year) : new Date().getFullYear();
+        if (!m || m < 1 || m > 12 || !y) {
+          return res.error('Invalid month/year', null, 'Month must be 1-12 and year must be valid', 400);
+        }
+        const start = new Date(y, m - 1, 1, 0, 0, 0, 0);
+        const end = new Date(y, m, 0, 23, 59, 59, 999);
+        match.productionDate.$gte = start;
+        match.productionDate.$lte = end;
+      } else {
+        if (startDate) match.productionDate.$gte = new Date(startDate);
+        if (endDate) match.productionDate.$lte = new Date(endDate);
+      }
+    }
 
     const totals = await ItemProduced.aggregate([
       { $match: match },

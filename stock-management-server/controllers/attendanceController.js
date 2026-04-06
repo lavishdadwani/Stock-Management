@@ -298,33 +298,43 @@ export const getCheckInStatus = async (req, res) => {
 export const getMyAttendanceHistory = async (req, res) => {
   try {
     const userId = req.userId;
-    const { page, limit, startDate, endDate } = req.query;
+    const { page, limit, startDate, endDate, month, year } = req.query;
 
     const query = { userId };
     
-    if (startDate || endDate) {
+    const hasMonth = month !== undefined && month !== null && month !== '';
+    const hasYear = year !== undefined && year !== null && year !== '';
+    if (hasMonth || hasYear || startDate || endDate) {
       query.checkInTime = {};
-      if (startDate) {
-        query.checkInTime.$gte = new Date(startDate);
-      }
-      if (endDate) {
-        query.checkInTime.$lte = new Date(endDate);
+
+      if (hasMonth) {
+        const m = Number(month);
+        const y = hasYear ? Number(year) : new Date().getFullYear();
+        if (!m || m < 1 || m > 12 || !y) {
+          return res.error('Invalid month/year', null, 'Month must be 1-12 and year must be valid', 400);
+        }
+        const start = new Date(y, m - 1, 1, 0, 0, 0, 0);
+        const end = new Date(y, m, 0, 23, 59, 59, 999);
+        query.checkInTime.$gte = start;
+        query.checkInTime.$lte = end;
+      } else {
+        if (startDate) query.checkInTime.$gte = new Date(startDate);
+        if (endDate) query.checkInTime.$lte = new Date(endDate);
       }
     }
 
-    // Pagination
     const pageNum = parseInt(page) || 1;
     const limitNum = parseInt(limit) || 10;
     const skip = (pageNum - 1) * limitNum;
 
+    const total = await Attendance.countDocuments(query);
 
-      const attendanceRecords = await Attendance.find(query)
+    const attendanceRecords = await Attendance.find(query)
       .populate('userId', 'name email')
       .populate('itemId')
       .sort({ checkInTime: -1 })
       .skip(skip)
       .limit(limitNum);
-      const total = attendanceRecords.length
 
       // Populate itemProduced using itemId reference
     //   const attendanceWithItems = attendanceRecords.map((attendance) => {
@@ -352,10 +362,12 @@ export const getMyAttendanceHistory = async (req, res) => {
       null,
       200,
       {
-        total,
-        page: pageNum,
-        limit: limitNum,
-        totalPages: Math.ceil(total / limitNum)
+        totalItems: total,
+        currentPage: pageNum,
+        itemsPerPage: limitNum,
+        totalPages: Math.ceil(total / limitNum),
+        hasNextPage: pageNum < Math.ceil(total / limitNum),
+        hasPreviousPage: pageNum > 1
       }
     );
   } catch (error) {

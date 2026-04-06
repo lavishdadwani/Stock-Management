@@ -218,7 +218,7 @@ export const getAllStockTransfers = async (req, res) => {
 export const getMyStockTransfers = async (req, res) => {
   try {
     const userId = req.userId;
-    const { page, limit, itemName, startDate, endDate } = req.query;
+    const { page, limit, itemName, startDate, endDate, month, year } = req.query;
     
     const { page: pageNum, limit: limitNum, skip } = getPaginationParams({ page, limit });
     
@@ -228,15 +228,27 @@ export const getMyStockTransfers = async (req, res) => {
       query.itemName = itemName;
     }
     
-    if (startDate || endDate) {
+    const hasMonth = month !== undefined && month !== null && month !== '';
+    const hasYear = year !== undefined && year !== null && year !== '';
+    if (hasMonth || hasYear || startDate || endDate) {
       query.transferDate = {};
-      if (startDate) {
-        query.transferDate.$gte = new Date(startDate);
-      }
-      if (endDate) {
-        query.transferDate.$lte = new Date(endDate);
+      if (hasMonth) {
+        const m = Number(month);
+        const y = hasYear ? Number(year) : new Date().getFullYear();
+        if (!m || m < 1 || m > 12 || !y) {
+          return res.error('Invalid month/year', null, 'Month must be 1-12 and year must be valid', 400);
+        }
+        const start = new Date(y, m - 1, 1, 0, 0, 0, 0);
+        const end = new Date(y, m, 0, 23, 59, 59, 999);
+        query.transferDate.$gte = start;
+        query.transferDate.$lte = end;
+      } else {
+        if (startDate) query.transferDate.$gte = new Date(startDate);
+        if (endDate) query.transferDate.$lte = new Date(endDate);
       }
     }
+
+    const total = await StockTransfer.countDocuments(query);
 
     const stockTransfers = await StockTransfer.find(query)
       .populate('fromUserId', 'name email role')
@@ -245,7 +257,6 @@ export const getMyStockTransfers = async (req, res) => {
       .skip(skip)
       .limit(limitNum);
     
-    const total = stockTransfers.length;
     const paginatedData = formatPaginatedResponse(stockTransfers, total, pageNum, limitNum);
     
     res.success(
@@ -518,87 +529,111 @@ export const getStockTransferQuantities = async (req, res) => {
   try {
     const userId = req.userId;
     const userRole = req.userRole;
-    const { toUserId, wire } = req.query;
+    const { toUserId, wire, startDate, endDate, month, year } = req.query;
 
     const pipeline = [];
 
+    // 🔥 BUILD MATCH OBJECT
+    const match = {};
+
+    // 👇 USER FILTER
     if (toUserId) {
-      pipeline.push({
-        $match: { toUserId: new mongoose.Types.ObjectId(toUserId) }
-      });
-    } else if (userRole === 'core_team') {
-      pipeline.push({
-        $match: { toUserId: new mongoose.Types.ObjectId(userId) }
-      });
+      match.toUserId = new mongoose.Types.ObjectId(toUserId);
+    } else if (userRole === "core_team") {
+      match.toUserId = new mongoose.Types.ObjectId(userId);
     }
 
-    // Optional: filter by a specific wire/item without changing response shape.
-    // Accepts: wire=aluminium|copper|scrap OR wire=Aluminium|Copper|Scrap
-    if (wire) {
-      const wireNormalized = String(wire).trim().toLowerCase();
-      const itemName =
-        wireNormalized === 'aluminium'
-          ? 'aluminium'
-          : wireNormalized === 'copper'
-            ? 'copper'
-            : wireNormalized === 'scrap'
-              ? 'scrap'
-              : null;
+    // 👇 DATE FILTER
+    const hasMonth = month !== undefined && month !== null && month !== "";
+    const hasYear = year !== undefined && year !== null && year !== "";
 
-      if (itemName) {
-        pipeline.push({ $match: { itemName } });
+    if (hasMonth) {
+      const m = Number(month);
+      const y = hasYear ? Number(year) : new Date().getFullYear();
+
+      if (!m || m < 1 || m > 12 || !y) {
+        return res.error(
+          "Invalid month/year",
+          null,
+          "Month must be 1-12 and year must be valid",
+          400
+        );
+      }
+
+      match.transferDate = {
+        $gte: new Date(y, m - 1, 1),
+        $lte: new Date(y, m, 0, 23, 59, 59, 999),
+      };
+    } else {
+      if (startDate || endDate) {
+        match.transferDate = {};
+        if (startDate) match.transferDate.$gte = new Date(startDate);
+        if (endDate) match.transferDate.$lte = new Date(endDate);
       }
     }
 
-    // Single $group: compute all three sums in one pass, then round in DB
+    // 👇 WIRE FILTER
+    if (wire) {
+      const wireNormalized = String(wire).trim().toLowerCase();
+
+      if (["aluminium", "copper", "scrap"].includes(wireNormalized)) {
+        match.itemName = wireNormalized;
+      }
+    }
+
+    // 🔥 PUSH MATCH ONCE
+    pipeline.push({ $match: match });
+
+    // 🔥 GROUP
     pipeline.push({
       $group: {
         _id: null,
-        aluminium: { $sum: { $cond: [{ $eq: ['$itemName', 'aluminium'] }, '$quantity', 0] } },
-        copper: { $sum: { $cond: [{ $eq: ['$itemName', 'copper'] }, '$quantity', 0] } },
-        scrap: { $sum: { $cond: [{ $eq: ['$itemName', 'scrap'] }, '$quantity', 0] } }
-      }
+        aluminium: {
+          $sum: {
+            $cond: [{ $eq: ["$itemName", "aluminium"] }, "$quantity", 0],
+          },
+        },
+        copper: {
+          $sum: {
+            $cond: [{ $eq: ["$itemName", "copper"] }, "$quantity", 0],
+          },
+        },
+        scrap: {
+          $sum: {
+            $cond: [{ $eq: ["$itemName", "scrap"] }, "$quantity", 0],
+          },
+        },
+      },
     });
+
+    // 🔥 ROUND
     pipeline.push({
       $project: {
-        aluminium: { $round: ['$aluminium', 2] },
-        copper: { $round: ['$copper', 2] },
-        scrap: { $round: ['$scrap', 2] }
-      }
+        aluminium: { $round: ["$aluminium", 2] },
+        copper: { $round: ["$copper", 2] },
+        scrap: { $round: ["$scrap", 2] },
+      },
     });
 
     const [doc] = await StockTransfer.aggregate(pipeline);
+
     const aluminium = doc?.aluminium ?? 0;
     const copper = doc?.copper ?? 0;
     const scrap = doc?.scrap ?? 0;
 
-    res.success(
-      'Stock transfer quantities fetched successfully',
+    return res.success(
+      "Stock transfer quantities fetched successfully",
       {
-        aluminium: {
-          name: 'aluminium',
-          quantity: aluminium,
-          unit: 'kg'
-        },
-        copper: {
-          name: 'copper',
-          quantity: copper,
-          unit: 'kg'
-        },
-        scrap: {
-          name: 'scrap',
-          quantity: scrap,
-          unit: 'kg'
-        }
-      },
-      null,
-      200
+        aluminium: { name: "aluminium", quantity: aluminium, unit: "kg" },
+        copper: { name: "copper", quantity: copper, unit: "kg" },
+        scrap: { name: "scrap", quantity: scrap, unit: "kg" },
+      }
     );
   } catch (error) {
-    res.error(
-      error.message || 'Failed to fetch stock transfer quantities',
+    return res.error(
+      error.message || "Failed to fetch stock transfer quantities",
       error,
-      'An error occurred while fetching stock transfer quantities',
+      "An error occurred while fetching stock transfer quantities",
       500
     );
   }
