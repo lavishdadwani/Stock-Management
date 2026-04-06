@@ -1,13 +1,13 @@
 // src/components/layout/AppHeader.js
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 
-export default function AppHeader({ onMenuPress }) {
+export default function AppHeader({ onMenuPress, initials = "U" }) {
   return (
     <View style={styles.container}>
       
       <TouchableOpacity onPress={onMenuPress}>
         <View style={styles.avatar}>
-          <Text style={styles.avatarText}>L</Text>
+          <Text style={styles.avatarText}>{initials}</Text>
         </View>
       </TouchableOpacity>
 
