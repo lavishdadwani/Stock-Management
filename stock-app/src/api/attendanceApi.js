@@ -1,4 +1,5 @@
 import client from "./client";
+import request from "../utils/request";
 
 const wrap = (response) => ({
   ok: response.status >= 200 && response.status < 300,
@@ -20,8 +21,17 @@ const checkOut = (data) =>
 const getCheckInStatus = () =>
   client.get("attendance/check-in-status").then(wrap);
 
+const getMyAttendanceHistory = (params) => {
+  let queryString = "";
+  if (params) {
+    queryString = "?" + request.toRequestParams(params);
+  }
+  return client.get(`attendance/my-history${queryString}`).then(wrap);
+};
+
 export default {
   checkIn,
   checkOut,
   getCheckInStatus,
+  getMyAttendanceHistory,
 };

@@ -2,8 +2,11 @@
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
+import { clearAuth } from "../utils/storage";
 
-const API_BASE_URL =  'http://localhost:8000/api/';
+const API_BASE_URL =
+  process.env.EXPO_PUBLIC_API_URL || "http://localhost:8000/api/"
+  // "https://stock-management-mciu.onrender.com/api";
 
 const client = axios.create({
   baseURL: API_BASE_URL,
@@ -26,7 +29,7 @@ client.interceptors.request.use(
       }
 
       return config;
-    } catch (error) {
+    } catch (_error) {
       return config;
     }
   },
@@ -45,8 +48,8 @@ client.interceptors.response.use(
       if (
         message?.toLowerCase().includes("invalid token")
       ) {
-        // 🔥 CLEAR TOKEN
-        await AsyncStorage.removeItem("token");
+        // 🔥 CLEAR AUTH
+        await clearAuth();
 
         // 🔥 REDIRECT TO LOGIN
         router.replace("/login");
