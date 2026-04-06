@@ -5,11 +5,13 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  TextInput,
 } from "react-native";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
+import { Dropdown } from "react-native-element-dropdown";
 
 import AppLayout from "../components/layout/AppLayout";
 import StockCard from "../components/ui/StockCard";
@@ -59,12 +61,13 @@ async function buildOptionalCheckInPayload() {
     }
   }
   const result = await dashboardApi.getCityName(payload.lat, payload.lng);
-      if (result && result.results && result.results.length > 0) {
-        const cityName = result.results[0].city;
-        const addressText = result.results[0].address_line2 || result.results[0].address_line1;
-        payload.city = cityName
-        payload.address = addressText
-      }
+  if (result && result.results && result.results.length > 0) {
+    const cityName = result.results[0].city;
+    const addressText =
+      result.results[0].address_line2 || result.results[0].address_line1;
+    payload.city = cityName;
+    payload.address = addressText;
+  }
 
   return payload;
 }
@@ -83,6 +86,33 @@ export default function Dashboard() {
   });
   const [showCheckout, setShowCheckout] = useState(false);
   const [products, setProducts] = useState([]);
+  const [productFilterMode, setProductFilterMode] = useState("all"); // all | month | range
+  const [selectedMonth, setSelectedMonth] = useState(
+    String(new Date().getMonth() + 1)
+  );
+  const [selectedYear, setSelectedYear] = useState(
+    String(new Date().getFullYear())
+  );
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+
+  const monthOptions = useMemo(
+    () => [
+      { label: "Jan", value: "1" },
+      { label: "Feb", value: "2" },
+      { label: "Mar", value: "3" },
+      { label: "Apr", value: "4" },
+      { label: "May", value: "5" },
+      { label: "Jun", value: "6" },
+      { label: "Jul", value: "7" },
+      { label: "Aug", value: "8" },
+      { label: "Sep", value: "9" },
+      { label: "Oct", value: "10" },
+      { label: "Nov", value: "11" },
+      { label: "Dec", value: "12" },
+    ],
+    []
+  );
 
   const syncCheckInStatus = useCallback(async () => {
     try {
@@ -96,16 +126,19 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
-    const checkAuth = async () => {
+    const run = async () => {
       const token = await getToken();
-      if (!token) router.replace("/login");
+      if (!token) {
+        router.replace("/login");
+        return;
+      }
+      fetchStockTransferQuantities();
+      fetchItemProduced();
+      syncCheckInStatus();
     };
-
-    checkAuth();
-    fetchStockTransferQuantities();
-    fetchItemProduced();
-    syncCheckInStatus();
-  }, [syncCheckInStatus]);
+    run();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [syncCheckInStatus, router]);
 
   const fetchStockTransferQuantities = async () => {
     try {
@@ -128,7 +161,16 @@ export default function Dashboard() {
 
   const fetchItemProduced = async () => {
     try {
-      const response = await dashboardApi.getItemProduced();
+      const params = {};
+      if (productFilterMode === "month") {
+        params.month = selectedMonth;
+        params.year = selectedYear;
+      } else if (productFilterMode === "range") {
+        if (startDate) params.startDate = startDate;
+        if (endDate) params.endDate = endDate;
+      }
+
+      const response = await dashboardApi.getItemProduced(params);
 
       if (response.ok) {
         setProducts(response.data.data || []);
@@ -144,6 +186,11 @@ export default function Dashboard() {
       console.error("Error fetching item produced:", error);
     }
   };
+
+  useEffect(() => {
+    fetchItemProduced();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [productFilterMode, selectedMonth, selectedYear, startDate, endDate]);
 
   const handleCheckIn = async () => {
     setCheckInLoading(true);
@@ -161,16 +208,11 @@ export default function Dashboard() {
       } else {
         Alert.alert(
           "Error",
-          res.data?.displayMessage ||
-            res.data?.message ||
-            "Check-in failed"
+          res.data?.displayMessage || res.data?.message || "Check-in failed"
         );
       }
     } catch (err) {
-      Alert.alert(
-        "Error",
-        err?.message || "Check-in failed"
-      );
+      Alert.alert("Error", err?.message || "Check-in failed");
     } finally {
       setCheckInLoading(false);
     }
@@ -231,9 +273,125 @@ export default function Dashboard() {
 
           <Text style={styles.section}>Products</Text>
 
-          {products.map((item, index) => (
-            <ProductCard key={item._id || index} item={item} />
-          ))}
+          <View style={styles.filterRow}>
+            <TouchableOpacity
+              style={[
+                styles.filterPill,
+                productFilterMode === "all" && styles.filterPillActive,
+              ]}
+              onPress={() => setProductFilterMode("all")}
+            >
+              <Text
+                style={[
+                  styles.filterPillText,
+                  productFilterMode === "all" && styles.filterPillTextActive,
+                ]}
+              >
+                All
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.filterPill,
+                productFilterMode === "month" && styles.filterPillActive,
+              ]}
+              onPress={() => setProductFilterMode("month")}
+            >
+              <Text
+                style={[
+                  styles.filterPillText,
+                  productFilterMode === "month" && styles.filterPillTextActive,
+                ]}
+              >
+                Monthly
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.filterPill,
+                productFilterMode === "range" && styles.filterPillActive,
+              ]}
+              onPress={() => setProductFilterMode("range")}
+            >
+              <Text
+                style={[
+                  styles.filterPillText,
+                  productFilterMode === "range" && styles.filterPillTextActive,
+                ]}
+              >
+                Date range
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {productFilterMode === "month" ? (
+            <View style={styles.filterControls}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.filterLabel}>Month</Text>
+                <Dropdown
+                  style={styles.dropdown}
+                  data={monthOptions}
+                  labelField="label"
+                  valueField="value"
+                  value={selectedMonth}
+                  placeholder="Select month"
+                  onChange={(item) => setSelectedMonth(item.value)}
+                />
+              </View>
+              <View style={{ width: 12 }} />
+              <View style={{ width: 120 }}>
+                <Text style={styles.filterLabel}>Year</Text>
+                <Dropdown
+                  style={styles.dropdown}
+                  data={[
+                    { label: "2025", value: "2025" },
+                    { label: "2026", value: "2026" },
+                    { label: "2027", value: "2027" },
+                  ]}
+                  labelField="label"
+                  valueField="value"
+                  value={selectedYear}
+                  placeholder="Select year"
+                  onChange={(item) => setSelectedYear(item.value)}
+                />
+              </View>
+            </View>
+          ) : null}
+
+          {productFilterMode === "range" ? (
+            <View style={styles.filterControls}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.filterLabel}>Start date</Text>
+                <TextInput
+                  style={styles.input}
+                  value={startDate}
+                  onChangeText={setStartDate}
+                  placeholder="YYYY-MM-DD"
+                />
+              </View>
+              <View style={{ width: 12 }} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.filterLabel}>End date</Text>
+                <TextInput
+                  style={styles.input}
+                  value={endDate}
+                  onChangeText={setEndDate}
+                  placeholder="YYYY-MM-DD"
+                />
+              </View>
+            </View>
+          ) : null}
+
+          {products.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyIcon}>📦</Text>
+              <Text style={styles.emptyText}>No products available yet</Text>
+            </View>
+          ) : (
+            products.map((item, index) => (
+              <ProductCard key={item._id || index} item={item} />
+            ))
+          )}
         </ScrollView>
 
         <TouchableOpacity
@@ -251,10 +409,10 @@ export default function Dashboard() {
             {checkInLoading
               ? "Checking IN..."
               : checkOutLoading
-                ? "Processing..."
-                : isCheckedIn
-                  ? "Check OUT"
-                  : "Check IN"}
+              ? "Processing..."
+              : isCheckedIn
+              ? "Check OUT"
+              : "Check IN"}
           </Text>
         </TouchableOpacity>
         <CheckOutModal
@@ -280,6 +438,55 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     fontSize: 16,
   },
+  filterRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  filterPill: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    backgroundColor: "#eef2ff",
+  },
+  filterPillActive: {
+    backgroundColor: "#2563eb",
+  },
+  filterPillText: {
+    color: "#1f2937",
+    fontWeight: "600",
+  },
+  filterPillTextActive: {
+    color: "#fff",
+  },
+  filterControls: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    marginBottom: 10,
+  },
+  filterLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#374151",
+    marginBottom: 6,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: "#d1d5db",
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: "#fff",
+  },
+  dropdown: {
+    borderWidth: 1,
+    borderColor: "#d1d5db",
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    height: 44,
+    backgroundColor: "#fff",
+  },
   fab: {
     position: "absolute",
     bottom: 20,
@@ -287,5 +494,13 @@ const styles = StyleSheet.create({
     backgroundColor: "#007bff",
     padding: 15,
     borderRadius: 30,
+  },
+  emptyContainer: {
+    alignItems: "center",
+    marginTop: 40,
+  },
+  emptyIcon: {
+    fontSize: 40,
+    marginBottom: 10,
   },
 });

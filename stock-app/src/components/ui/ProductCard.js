@@ -4,9 +4,14 @@ import { View, Text, StyleSheet } from "react-native";
 export default function ProductCard({ item }) {
   return (
     <View style={styles.card}>
-      <Text style={styles.name}>{item.itemName}</Text>
+      <Text style={styles.name}>{item.name}</Text>
+      {/* <Text style={styles.name}>{item.itemName}</Text> */}
       <Text>Qty: {item.quantity} {item.unit}</Text>
-      <Text>Produced: {item.quantity}</Text>
+      {typeof item.producedQuantity === "number" || typeof item.purchasedQuantity === "number" ? (
+        <Text>
+          Produced: {item.producedQuantity ?? 0} | Purchased: {item.purchasedQuantity ?? 0}
+        </Text>
+      ) : null}
     </View>
   );
 }
