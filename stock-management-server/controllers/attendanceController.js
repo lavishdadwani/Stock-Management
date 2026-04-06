@@ -1,16 +1,19 @@
- import Attendance from '../models/attendance.model.js';
+import Attendance from '../models/attendance.model.js';
 import ItemProduced from '../models/itemProduced.model.js';
 import StockTransfer from '../models/stockTransfer.model.js';
 import { mongoose } from 'mongoose';
 import { validateCheckoutData } from '../utils/validation.js';
+import { getPaginationParams, formatPaginatedResponse } from '../utils/pagination.js';
 
-// Check-in - Start work session
+const MAX_CHECKIN_PHOTO_CHARS = 2_500_000; // ~1.8MB base64 safety limit
+
+// Check-in - Start work session (optional: checkInPhoto, lat, lng — app sends lat/lng)
 export const checkIn = async (req, res) => {
   try {
     const userId = req.userId;
 
     const existingAttendance = await Attendance.isCheckedIn(userId);
-    
+
     if (existingAttendance) {
       return res.error(
         'Already checked in',
@@ -20,10 +23,45 @@ export const checkIn = async (req, res) => {
       );
     }
 
+    const { checkInPhoto, lat, lng, city, address } = req.body || {};
+
+    let photo = null;
+    if (checkInPhoto != null && typeof checkInPhoto === 'string' && checkInPhoto.trim() !== '') {
+      if (checkInPhoto.length > MAX_CHECKIN_PHOTO_CHARS) {
+        return res.error(
+          'Photo too large',
+          null,
+          'Check-in photo exceeds maximum size. Try a lower camera quality.',
+          400
+        );
+      }
+      photo = checkInPhoto.trim();
+    }
+
+    const latNum =
+      lat !== undefined && lat !== null && lat !== '' ? Number(lat) : null;
+    const lngNum =
+      lng !== undefined && lng !== null && lng !== '' ? Number(lng) : null;
+
+    let checkInLatitude = null;
+    let checkInLongitude = null;
+    if (latNum != null && !Number.isNaN(latNum) && lngNum != null && !Number.isNaN(lngNum)) {
+      if (latNum < -90 || latNum > 90 || lngNum < -180 || lngNum > 180) {
+        return res.error('Invalid coordinates', null, 'Latitude must be -90–90 and longitude -180–180', 400);
+      }
+      checkInLatitude = latNum;
+      checkInLongitude = lngNum;
+    }
+
     const attendance = new Attendance({
       userId,
       checkInTime: new Date(),
-      status: 'checked-in'
+      status: 'checked-in',
+      checkInPhoto: photo,
+      checkInLatitude,
+      checkInLongitude,
+      address,
+      city
     });
 
     const savedAttendance = await attendance.save();
@@ -237,7 +275,9 @@ export const getCheckInStatus = async (req, res) => {
           _id: attendance._id,
           checkInTime: attendance.checkInTime,
           status: attendance.status,
-          userId: attendance.userId
+          userId: attendance.userId,
+          checkInLatitude: attendance.checkInLatitude ?? null,
+          checkInLongitude: attendance.checkInLongitude ?? null
         }
       },
       null,
@@ -324,6 +364,141 @@ export const getMyAttendanceHistory = async (req, res) => {
       error.message || 'Failed to fetch attendance history',
       error,
       'An error occurred while fetching attendance history',
+      500
+    );
+  }
+};
+
+/**
+ * Manager/owner: paginated attendance history for a user (no raw photo bytes — use hasCheckInPhoto + /record/:id).
+ */
+export const getAttendanceHistoryForUser = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.error('Invalid user id', null, null, 400);
+    }
+
+    const { page, limit } = req.query;
+    const { page: pageNum, limit: limitNum, skip } = getPaginationParams({ page, limit });
+
+    const match = { userId: new mongoose.Types.ObjectId(userId) };
+    const total = await Attendance.countDocuments(match);
+
+    const rows = await Attendance.aggregate([
+      { $match: match },
+    
+      // 🔗 USER POPULATE
+      {
+        $lookup: {
+          from: "users", // collection name in MongoDB
+          localField: "userId",
+          foreignField: "_id",
+          as: "user",
+        },
+      },
+      {
+        $unwind: {
+          path: "$user",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      // {
+      //   $addFields: {
+      //     itemId: { $toObjectId: "$itemId" }
+      //   }
+      // },
+    
+      // 🔗 ITEM POPULATE
+      {
+        $lookup: {
+          from: "itemproduceds", // ✅ correct
+          localField: "itemId",
+          foreignField: "_id",
+          as: "item",
+        },
+      },
+      {
+        $unwind: {
+          path: "$item",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+    
+      { $sort: { checkInTime: -1 } },
+      { $skip: skip },
+      { $limit: limitNum },
+    
+      // 🎯 FINAL SHAPE
+      {
+        $project: {
+          checkInTime: 1,
+          checkOutTime: 1,
+          address: 1,
+          city: 1,
+          status: 1,
+          checkInLatitude: 1,
+          checkInLongitude: 1,
+          createdAt: 1,
+          updatedAt: 1,
+    
+          // 👇 populated data
+          user: {
+            _id: "$user._id",
+            name: "$user.name",
+            email: "$user.email",
+          },
+    
+          item: "$item",
+    
+          hasCheckInPhoto: {
+            $gt: [{ $strLenCP: { $ifNull: ["$checkInPhoto", ""] } }, 0],
+          },
+        },
+      },
+    ]);
+
+    const paginated = formatPaginatedResponse(rows, total, pageNum, limitNum);
+    res.success(
+      'Attendance history fetched successfully',
+      paginated.data,
+      null,
+      200,
+      paginated.pagination
+    );
+  } catch (error) {
+    console.error('Error fetching user attendance history:', error);
+    res.error(
+      error.message || 'Failed to fetch attendance history',
+      error,
+      'An error occurred while fetching attendance history',
+      500
+    );
+  }
+};
+
+/**
+ * Manager/owner: single attendance row including check-in photo (for modal).
+ */
+export const getAttendanceRecordById = async (req, res) => {
+  try {
+    const { attendanceId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(attendanceId)) {
+      return res.error('Invalid attendance id', null, null, 400);
+    }
+
+    const doc = await Attendance.findById(attendanceId).lean();
+    if (!doc) {
+      return res.error('Attendance not found', null, null, 404);
+    }
+
+    res.success('Attendance record fetched successfully', doc, null, 200);
+  } catch (error) {
+    console.error('Error fetching attendance record:', error);
+    res.error(
+      error.message || 'Failed to fetch attendance record',
+      error,
+      'An error occurred while fetching the attendance record',
       500
     );
   }
