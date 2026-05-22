@@ -25,7 +25,6 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "permissions": [
-        "android.permission.RECORD_AUDIO",
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION"
       ],
@@ -80,9 +79,7 @@
       "router": {},
       "eas": {
         "projectId": "819cdcdf-9fdd-43ae-82a5-50cc1041a579"
-      },
-      "GEOAPI": "https://api.geoapify.com/v1/geocode/",
-      "GEOAPI_KEY": "f96462cc28394c1dbbc0465e25c7bfc2"
+      }
     }
   }
 }
