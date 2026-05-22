@@ -7,6 +7,11 @@ import AppDrawer from "./AppDrawer";
 import authApi from "../../api/authApi";
 import { getUser } from "../../utils/storage";
 import { Ionicons } from "@expo/vector-icons";
+import {
+  SafeAreaProvider,
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 
 export default function AppLayout({ children }) {
   const router = useRouter();
@@ -33,51 +38,74 @@ export default function AppLayout({ children }) {
     setDrawerOpen(false);
     router.replace("/login");
   };
+  const insets = useSafeAreaInsets();
 
   return (
-    <View style={{ flex: 1 }}>
-      <AppHeader initials={initials} onMenuPress={() => setDrawerOpen(true)} />
+    <SafeAreaProvider>
+      <SafeAreaView style={{ flex: 1 }} edges={["top", "bottom"]}>
+        <View style={{ flex: 1 }}>
+          <AppHeader
+            initials={initials}
+            onMenuPress={() => setDrawerOpen(true)}
+          />
 
-      <AppDrawer
-        visible={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        onLogout={handleLogout}
-        user={user}
-        onNavigate={(path) => {
-          setDrawerOpen(false);
-          router.push(path);
-        }}
-      />
+          <AppDrawer
+            visible={drawerOpen}
+            onClose={() => setDrawerOpen(false)}
+            onLogout={handleLogout}
+            user={user}
+            onNavigate={(path) => {
+              setDrawerOpen(false);
+              router.push(path);
+            }}
+          />
 
-      <View style={{ flex: 1, paddingBottom: 62 }}>{children}</View>
+          <View
+            style={{
+              flex: 1,
+              paddingBottom: 56 + insets.bottom, // dynamic spacing
+            }}
+          >
+            {children}
+          </View>
 
-      <View style={styles.bottomNav}>
-        <TouchableOpacity
-          style={styles.navBtn}
-          onPress={() => router.push("/dashboard")}
-        >
-          <Ionicons name="home" size={22} color="#111827" />
-          <Text style={styles.navText}>Home</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.navBtn}
-          onPress={() => router.push("/stock-transfer-history")}
-        >
-          <Ionicons name="swap-horizontal" size={22} color="#111827" />
-          <Text style={styles.navText}>Transfers</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
+          <View
+            style={[
+              styles.bottomNav,
+              {
+                paddingBottom: insets.bottom,
+                height: 56 + insets.bottom,
+              },
+            ]}
+          >
+            <TouchableOpacity
+              style={styles.navBtn}
+              onPress={() => router.push("/dashboard")}
+            >
+              <Ionicons name="home" size={22} color="#111827" />
+              <Text style={styles.navText}>Home</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.navBtn}
+              onPress={() => router.push("/stock-transfer-history")}
+            >
+              <Ionicons name="swap-horizontal" size={22} color="#111827" />
+              <Text style={styles.navText}>Transfers</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </SafeAreaView>
+    </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
   bottomNav: {
-    position: "absolute",
+    // position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    height: 56,
+    // height: 56,
     backgroundColor: "#fff",
     borderTopWidth: 1,
     borderTopColor: "#e5e7eb",
@@ -88,9 +116,9 @@ const styles = StyleSheet.create({
   },
   navBtn: {
     flex: 1,
-  alignItems: "center",
-  justifyContent: "center",
-  height: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+    height: "100%",
   },
   navText: {
     fontSize: 12,

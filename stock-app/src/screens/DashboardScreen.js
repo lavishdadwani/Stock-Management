@@ -21,32 +21,97 @@ import { getToken } from "../utils/storage";
 import attendanceApi from "../api/attendanceApi";
 import CheckOutModal from "../components/CheckOutModal";
 import dashboardApi from "../api/dashboardApi";
+// import * as FaceDetector from "expo-face-detector";
+import * as ImageManipulator from "expo-image-manipulator";
+
+// const detectFace = async (uri) => {
+//   const result = await FaceDetector.detectFacesAsync(uri, {
+//     mode: FaceDetector.FaceDetectorMode.fast,
+//   });
+
+//   return result.faces.length > 0;
+// };
 
 /** Build optional check-in payload: photo (data URL), GPS. Omits missing parts. */
 async function buildOptionalCheckInPayload() {
   const payload = {};
 
   const camPerm = await ImagePicker.requestCameraPermissionsAsync();
-  if (camPerm.granted) {
-    try {
-      const image = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 0.5,
-        base64: true,
-      });
-      if (!image.canceled && image.assets?.[0]) {
-        const asset = image.assets[0];
-        if (asset.base64) {
-          const mime = asset.mimeType || "image/jpeg";
-          payload.checkInPhoto = `data:${mime};base64,${asset.base64}`;
-        }
-      }
-    } catch (e) {
-      console.warn("Camera check-in:", e?.message || e);
-    }
+  if (!camPerm.granted) {
+    Alert.alert("Permission Required", "Camera permission is required");
+    return null;
   }
+  try {
+    const image = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: false,
+      quality: 0.5,
+      cameraType: ImagePicker.CameraType.front,
+    });
+
+    // ❌ USER DID NOT TAKE PHOTO
+    if (image.canceled || !image.assets?.[0]) {
+      Alert.alert("Required", "Please capture your photo to complete check-in");
+      return null;
+    }
+
+    // const hasFace = await detectFace(image.assets[0].uri);
+    // if (!hasFace) {
+    //   Alert.alert("Required", "Please ensure your face is visible in the photo");
+    //   return null;
+    // }
+
+    const asset = image.assets[0];
+
+    const manipulated = await ImageManipulator.manipulateAsync(
+      asset.uri,
+      [{ resize: { width: 720, height: 960 } }],
+      {
+        compress: 0.6,
+        format: ImageManipulator.SaveFormat.JPEG,
+        base64: true,
+      }
+    );
+
+    payload.checkInPhoto = `data:image/jpeg;base64,${manipulated.base64}`;
+  } catch (e) {
+    console.warn("Camera check-in:", e?.message || e);
+    Alert.alert("Error", "Failed to capture image");
+    return null;
+  }
+  // option 2: use the camera directly
+  // if (camPerm.granted) {
+  //   try {
+  //     const image = await ImagePicker.launchCameraAsync({
+  //       mediaTypes: ImagePicker.MediaTypeOptions.Images,
+  //       allowsEditing: false,
+  //       // aspect: [4, 3],
+  //       quality: 0.5,
+  //       base64: true,
+  //       cameraType: ImagePicker.CameraType.front,
+  //     });
+  //     if (!image.canceled && image.assets?.[0]) {
+  //       const asset = image.assets[0];
+  //       // if (asset.base64) {
+  //       //   const mime = asset.mimeType || "image/jpeg";
+  //       //   payload.checkInPhoto = `data:${mime};base64,${asset.base64}`;
+  //       // }
+  //       const manipulated = await ImageManipulator.manipulateAsync(
+  //         asset.uri,
+  //         [{ resize: { width: 720, height: 960 } }],
+  //         {
+  //           compress: 0.6,
+  //           format: ImageManipulator.SaveFormat.JPEG,
+  //           base64: true,
+  //         }
+  //       );
+  //       payload.checkInPhoto = `data:image/jpeg;base64,${manipulated.base64}`;
+
+  //     }
+  //   } catch (e) {
+  //     console.warn("Camera check-in:", e?.message || e);
+  //   }
+  // }
 
   const locPerm = await Location.requestForegroundPermissionsAsync();
   if (locPerm.granted) {
@@ -195,8 +260,9 @@ export default function Dashboard() {
   const handleCheckIn = async () => {
     setCheckInLoading(true);
     try {
-      const optional = await buildOptionalCheckInPayload();
-      const res = await attendanceApi.checkIn(optional);
+      const payload = await buildOptionalCheckInPayload();
+      if (!payload) return; // stop if validation failed
+      const res = await attendanceApi.checkIn(payload);
 
       if (res.ok) {
         setIsCheckedIn(true);
