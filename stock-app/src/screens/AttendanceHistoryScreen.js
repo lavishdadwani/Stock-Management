@@ -263,7 +263,7 @@ const styles = StyleSheet.create({
   },
   cardTitle: { fontWeight: "800", marginBottom: 4 },
   cardLine: { color: "#374151" },
-  muted: { color: "#6b7280" },
+  muted: { color: "#6b7280", fontSize: 14 },
   error: { color: "#b91c1c", fontWeight: "700" },
   emptyContainer: {
     alignItems: "center",
@@ -273,10 +273,5 @@ const styles = StyleSheet.create({
   emptyIcon: {
     fontSize: 40,
     marginBottom: 10,
-  },
-
-  muted: {
-    color: "#6b7280",
-    fontSize: 14,
   },
 });
