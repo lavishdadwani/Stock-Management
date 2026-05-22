@@ -1,12 +1,26 @@
 
 import axios from "axios";
+import { Alert } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import { clearAuth } from "../utils/storage";
 
-const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL || "http://localhost:8000/api/"
-  // "https://stock-management-mciu.onrender.com/api";
+const DEV_API_URL = "http://localhost:8000/api/";
+
+function normalizeBaseUrl(url) {
+  if (!url) return "";
+  return url.endsWith("/") ? url : `${url}/`;
+}
+
+const API_BASE_URL = normalizeBaseUrl(
+  process.env.EXPO_PUBLIC_API_URL || (__DEV__ ? DEV_API_URL : "")
+);
+
+if (!API_BASE_URL && !__DEV__) {
+  console.error(
+    "[stock-app] EXPO_PUBLIC_API_URL is missing. Set it in EAS secrets or .env before building."
+  );
+}
 
 const client = axios.create({
   baseURL: API_BASE_URL,
@@ -16,15 +30,13 @@ const client = axios.create({
 });
 
 
-// 🔐 REQUEST INTERCEPTOR (ADD TOKEN)
+// REQUEST INTERCEPTOR (ADD TOKEN)
 client.interceptors.request.use(
   async (config) => {
     try {
       const token = await AsyncStorage.getItem("token");
 
       if (token) {
-        // config.headers.Authorization = token;
-        // OR if backend expects Bearer:
         config.headers.Authorization = `Bearer ${token}`;
       }
 
@@ -36,7 +48,7 @@ client.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// 🚨 RESPONSE (GLOBAL ERROR HANDLING)
+// RESPONSE (GLOBAL ERROR HANDLING)
 client.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -45,17 +57,10 @@ client.interceptors.response.use(
     if (res?.status === 403) {
       const message = res?.data?.message;
 
-      if (
-        message?.toLowerCase().includes("invalid token")
-      ) {
-        // 🔥 CLEAR AUTH
+      if (message?.toLowerCase().includes("invalid token")) {
         await clearAuth();
-
-        // 🔥 REDIRECT TO LOGIN
         router.replace("/login");
-
-        // 🔥 OPTIONAL ALERT
-        alert("Session expired. Please login again.");
+        Alert.alert("Session expired", "Please login again.");
       }
     }
 

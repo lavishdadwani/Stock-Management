@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Alert } from "react-native";
 import { useEffect, useState } from "react";
 import { Dropdown } from "react-native-element-dropdown";
 
@@ -72,7 +72,7 @@ export default function StockTransferHistoryScreen() {
         );
       }
     } catch (error) {
-      console.error("Error fetching stock transfer quantities:", error);
+      if (__DEV__) console.error("Error fetching stock transfer quantities:", error);
     }
   };
   useEffect(() => {
@@ -220,7 +220,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   container: { padding: 15 },
-  title: { fontSize: 18, fontWeight: "800" },
+  title: { fontSize: 18, fontWeight: "800",marginBottom: 12 },
   filterRow: { flexDirection: "row", gap: 10, marginTop: 12, marginBottom: 8 },
   filterPill: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 999, backgroundColor: "#eef2ff" },
   filterPillActive: { backgroundColor: "#2563eb" },

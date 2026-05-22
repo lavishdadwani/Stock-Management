@@ -20,17 +20,8 @@ import ProductCard from "../components/ui/ProductCard";
 import { getToken } from "../utils/storage";
 import attendanceApi from "../api/attendanceApi";
 import CheckOutModal from "../components/CheckOutModal";
-import dashboardApi from "../api/dashboardApi";
-// import * as FaceDetector from "expo-face-detector";
+import dashboardApi, { getCityName } from "../api/dashboardApi";
 import * as ImageManipulator from "expo-image-manipulator";
-
-// const detectFace = async (uri) => {
-//   const result = await FaceDetector.detectFacesAsync(uri, {
-//     mode: FaceDetector.FaceDetectorMode.fast,
-//   });
-
-//   return result.faces.length > 0;
-// };
 
 /** Build optional check-in payload: photo (data URL), GPS. Omits missing parts. */
 async function buildOptionalCheckInPayload() {
@@ -55,12 +46,6 @@ async function buildOptionalCheckInPayload() {
       return null;
     }
 
-    // const hasFace = await detectFace(image.assets[0].uri);
-    // if (!hasFace) {
-    //   Alert.alert("Required", "Please ensure your face is visible in the photo");
-    //   return null;
-    // }
-
     const asset = image.assets[0];
 
     const manipulated = await ImageManipulator.manipulateAsync(
@@ -75,43 +60,10 @@ async function buildOptionalCheckInPayload() {
 
     payload.checkInPhoto = `data:image/jpeg;base64,${manipulated.base64}`;
   } catch (e) {
-    console.warn("Camera check-in:", e?.message || e);
+    if (__DEV__) console.warn("Camera check-in:", e?.message || e);
     Alert.alert("Error", "Failed to capture image");
     return null;
   }
-  // option 2: use the camera directly
-  // if (camPerm.granted) {
-  //   try {
-  //     const image = await ImagePicker.launchCameraAsync({
-  //       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-  //       allowsEditing: false,
-  //       // aspect: [4, 3],
-  //       quality: 0.5,
-  //       base64: true,
-  //       cameraType: ImagePicker.CameraType.front,
-  //     });
-  //     if (!image.canceled && image.assets?.[0]) {
-  //       const asset = image.assets[0];
-  //       // if (asset.base64) {
-  //       //   const mime = asset.mimeType || "image/jpeg";
-  //       //   payload.checkInPhoto = `data:${mime};base64,${asset.base64}`;
-  //       // }
-  //       const manipulated = await ImageManipulator.manipulateAsync(
-  //         asset.uri,
-  //         [{ resize: { width: 720, height: 960 } }],
-  //         {
-  //           compress: 0.6,
-  //           format: ImageManipulator.SaveFormat.JPEG,
-  //           base64: true,
-  //         }
-  //       );
-  //       payload.checkInPhoto = `data:image/jpeg;base64,${manipulated.base64}`;
-
-  //     }
-  //   } catch (e) {
-  //     console.warn("Camera check-in:", e?.message || e);
-  //   }
-  // }
 
   const locPerm = await Location.requestForegroundPermissionsAsync();
   if (locPerm.granted) {
@@ -122,16 +74,21 @@ async function buildOptionalCheckInPayload() {
       payload.lat = pos.coords.latitude;
       payload.lng = pos.coords.longitude;
     } catch (e) {
-      console.warn("Location check-in:", e?.message || e);
+      if (__DEV__) console.warn("Location check-in:", e?.message || e);
     }
   }
-  const result = await dashboardApi.getCityName(payload.lat, payload.lng);
-  if (result && result.results && result.results.length > 0) {
-    const cityName = result.results[0].city;
-    const addressText =
-      result.results[0].address_line2 || result.results[0].address_line1;
-    payload.city = cityName;
-    payload.address = addressText;
+
+  if (payload.lat != null && payload.lng != null) {
+    try {
+      const result = await getCityName(payload.lat, payload.lng);
+      if (result?.results?.length > 0) {
+        payload.city = result.results[0].city;
+        payload.address =
+          result.results[0].address_line2 || result.results[0].address_line1;
+      }
+    } catch (e) {
+      if (__DEV__) console.warn("Geocoding check-in:", e?.message || e);
+    }
   }
 
   return payload;
@@ -161,6 +118,14 @@ export default function Dashboard() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
+  const yearOptions = useMemo(() => {
+    const current = new Date().getFullYear();
+    return [current - 1, current, current + 1].map((y) => ({
+      label: String(y),
+      value: String(y),
+    }));
+  }, []);
+
   const monthOptions = useMemo(
     () => [
       { label: "Jan", value: "1" },
@@ -186,7 +151,7 @@ export default function Dashboard() {
         setIsCheckedIn(!!res.data.data.isCheckedIn);
       }
     } catch (e) {
-      console.warn("check-in status:", e?.message || e);
+      if (__DEV__) console.warn("check-in status:", e?.message || e);
     }
   }, []);
 
@@ -220,7 +185,8 @@ export default function Dashboard() {
         );
       }
     } catch (error) {
-      console.error("Error fetching stock transfer quantities:", error);
+      if (__DEV__) console.error("Error fetching stock transfer quantities:", error);
+      Alert.alert("Error", "Failed to load stock quantities. Pull to refresh or try again.");
     }
   };
 
@@ -248,7 +214,8 @@ export default function Dashboard() {
         );
       }
     } catch (error) {
-      console.error("Error fetching item produced:", error);
+      if (__DEV__) console.error("Error fetching item produced:", error);
+      Alert.alert("Error", "Failed to load products. Please try again.");
     }
   };
 
@@ -287,7 +254,19 @@ export default function Dashboard() {
   const handleCheckOut = async (form) => {
     try {
       setCheckOutLoading(true);
-      const location = await Location.getCurrentPositionAsync({});
+
+      const locPerm = await Location.requestForegroundPermissionsAsync();
+      if (!locPerm.granted) {
+        Alert.alert(
+          "Permission Required",
+          "Location permission is required to check out."
+        );
+        return;
+      }
+
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
 
       const payload = {
         ...form,
@@ -409,11 +388,7 @@ export default function Dashboard() {
                 <Text style={styles.filterLabel}>Year</Text>
                 <Dropdown
                   style={styles.dropdown}
-                  data={[
-                    { label: "2025", value: "2025" },
-                    { label: "2026", value: "2026" },
-                    { label: "2027", value: "2027" },
-                  ]}
+                  data={yearOptions}
                   labelField="label"
                   valueField="value"
                   value={selectedYear}

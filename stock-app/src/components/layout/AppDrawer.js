@@ -1,6 +1,5 @@
 // src/components/layout/AppDrawer.js
-import { View, Text, TouchableOpacity, StyleSheet, Alert } from "react-native";
-import { clearAuth } from "../../utils/storage";
+import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 
 export default function AppDrawer({ visible, onClose, onLogout, user, onNavigate }) {
   if (!visible) return null;
