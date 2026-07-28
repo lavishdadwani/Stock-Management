@@ -10,7 +10,8 @@ import { getSalesColumns } from '../components/sales/columns/salesColumns';
 import { showSnackbar } from '../redux/slices/snackbarSlice';
 import salesAPI from '../../services/sales';
 import customerAPI from '../../services/customer';
-import { FaPlus } from 'react-icons/fa';
+import { triggerBlobDownload, parseBlobError } from '../utils/downloadFile';
+import { FaPlus, FaDownload } from 'react-icons/fa';
 
 const Sales = () => {
   const dispatch = useDispatch();
@@ -26,22 +27,47 @@ const Sales = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [editingSale, setEditingSale] = useState(null);
   const [saleToDelete, setSaleToDelete] = useState(null);
+  const [exporting, setExporting] = useState(false);
 
   const pageSize = 10;
+
+  const handleExportCsv = async () => {
+    setExporting(true);
+    try {
+      const response = await salesAPI.exportCsv();
+      if (response.ok) {
+        triggerBlobDownload(response.data, `sales-export-${Date.now()}.csv`);
+      } else {
+        const message = await parseBlobError(response.data, 'Failed to export sales');
+        dispatch(showSnackbar({ message, severity: 'error' }));
+      }
+    } catch (error) {
+      dispatch(showSnackbar({ message: error.message || 'Failed to export sales', severity: 'error' }));
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const fetchCustomers = async () => {
     try {
       const response = await customerAPI.getAllCustomers({ page: 1, limit: 500, isActive: true });
       if (response.ok) {
         setCustomers(response.data?.data || []);
-      }
-    } catch {
+      } else {
         dispatch(
-            showSnackbar({
-              message: response.data?.displayMessage || response.data?.message || 'Failed to load customers',
-              severity: 'error'
-            })
-          );
+          showSnackbar({
+            message: response.data?.displayMessage || response.data?.message || 'Failed to load customers',
+            severity: 'error'
+          })
+        );
+      }
+    } catch (error) {
+      dispatch(
+        showSnackbar({
+          message: error.message || 'Failed to load customers',
+          severity: 'error'
+        })
+      );
     }
   };
 
@@ -50,14 +76,21 @@ const Sales = () => {
       const response = await salesAPI.getAvailableItems();
       if (response.ok) {
         setAvailableItems(response.data?.data || []);
-      }
-    } catch {
+      } else {
         dispatch(
-            showSnackbar({
-              message: response.data?.displayMessage || response.data?.message || 'Failed to load items',
-              severity: 'error'
-            })
-          );
+          showSnackbar({
+            message: response.data?.displayMessage || response.data?.message || 'Failed to load items',
+            severity: 'error'
+          })
+        );
+      }
+    } catch (error) {
+      dispatch(
+        showSnackbar({
+          message: error.message || 'Failed to load items',
+          severity: 'error'
+        })
+      );
     }
   };
 
@@ -195,10 +228,21 @@ const Sales = () => {
             <h1 className="text-3xl font-bold text-gray-900">Sales</h1>
             <p className="text-gray-600 mt-1">Sell finished products (pieces) to customers</p>
           </div>
-          <Button onClick={() => setIsAddModalOpen(true)} className="flex items-center space-x-2">
-            <FaPlus className="w-4 h-4" />
-            <span>Create Sale</span>
-          </Button>
+          <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              onClick={handleExportCsv}
+              loading={exporting}
+              className="flex items-center space-x-2"
+            >
+              <FaDownload className="w-4 h-4" />
+              <span>Export CSV</span>
+            </Button>
+            <Button onClick={() => setIsAddModalOpen(true)} className="flex items-center space-x-2">
+              <FaPlus className="w-4 h-4" />
+              <span>Create Sale</span>
+            </Button>
+          </div>
         </div>
 
         <Table

@@ -10,7 +10,6 @@ import ResetPassword from './pages/ResetPassword'
 import Dashboard from './pages/Dashboard'
 import Profile from './pages/Profile'
 import Stock from './pages/Stock'
-import Inventory from './pages/Inventory'
 import Reports from './pages/Reports'
 import Users from './pages/Users'
 import UserDetails from './pages/UserDetails'
@@ -19,10 +18,13 @@ import StockTransfer from './pages/StockTransfer'
 import Customer from './pages/Customer'
 import CustomerDetails from './pages/CustomerDetails'
 import Sales from './pages/Sales'
+import Analytics from './pages/Analytics'
+import ProducibleItems from './pages/ProducibleItems'
 
 function App() {
   const dispatch = useDispatch()
   const { isAuthenticated, token } = useSelector((state) => state.auth)
+  const themeMode = useSelector((state) => state.theme.mode)
 
   useEffect(() => {
     // Try to get current user if token exists
@@ -30,6 +32,15 @@ function App() {
       dispatch(getCurrentUser())
     }
   }, [dispatch, token])
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', themeMode === 'dark')
+    try {
+      localStorage.setItem('themeMode', themeMode)
+    } catch {
+      // localStorage unavailable (e.g. private browsing) - theme just won't persist
+    }
+  }, [themeMode])
 
   return (
     <>
@@ -72,16 +83,8 @@ function App() {
             </ProtectedRoute>
           } 
         />
-        <Route 
-          path="/inventory" 
-          element={
-            <ProtectedRoute>
-              <Inventory />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/reports" 
+        <Route
+          path="/reports"
           element={
             <ProtectedRoute>
               <Reports />
@@ -136,13 +139,29 @@ function App() {
             </ProtectedRoute>
           }
         />
-        <Route 
-          path="/sales" 
+        <Route
+          path="/sales"
           element={
             <ProtectedRoute>
               <Sales />
             </ProtectedRoute>
-          } 
+          }
+        />
+        <Route
+          path="/analytics"
+          element={
+            <ProtectedRoute>
+              <Analytics />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/producible-items"
+          element={
+            <ProtectedRoute>
+              <ProducibleItems />
+            </ProtectedRoute>
+          }
         />
       </Routes>
     </>

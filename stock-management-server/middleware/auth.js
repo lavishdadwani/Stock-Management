@@ -24,10 +24,12 @@ const Auth = async function (req, res, next) {
     }
 
     // Verify token signature
-    const SecretKey = process.env.JWT_SECRET || `${user.email}-${new Date(user.createdAt).getTime()}`;
-    
+    if (!process.env.JWT_SECRET) {
+      return res.error('Server misconfiguration: JWT_SECRET is not set.', null, null, 500);
+    }
+
     try {
-      const decoded = jwt.verify(token, SecretKey);
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
       
       // Verify token matches user
       if (decoded.id !== user._id.toString()) {

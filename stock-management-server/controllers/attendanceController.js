@@ -4,8 +4,28 @@ import StockTransfer from '../models/stockTransfer.model.js';
 import { mongoose } from 'mongoose';
 import { validateCheckoutData } from '../utils/validation.js';
 import { getPaginationParams, formatPaginatedResponse } from '../utils/pagination.js';
+import { toCsv, sendCsv } from '../utils/csv.js';
 
 const MAX_CHECKIN_PHOTO_CHARS = 2_500_000; // ~1.8MB base64 safety limit
+const EXPORT_ROW_LIMIT = 10000;
+
+const ATTENDANCE_CSV_COLUMNS = [
+  { header: 'User', value: (r) => r.userId?.name || '' },
+  { header: 'Email', value: (r) => r.userId?.email || '' },
+  { header: 'Status', value: (r) => r.status },
+  { header: 'Check-In Time', value: (r) => r.checkInTime?.toISOString() || '' },
+  { header: 'Check-Out Time', value: (r) => r.checkOutTime?.toISOString() || '' },
+  {
+    header: 'Duration (hrs)',
+    value: (r) =>
+      r.checkOutTime
+        ? ((new Date(r.checkOutTime) - new Date(r.checkInTime)) / 3600000).toFixed(2)
+        : ''
+  },
+  { header: 'Item Produced', value: (r) => r.itemId?.itemName || '' },
+  { header: 'City', value: (r) => r.city || '' },
+  { header: 'Address', value: (r) => r.address || '' }
+];
 
 // Check-in - Start work session (optional: checkInPhoto, lat, lng — app sends lat/lng)
 export const checkIn = async (req, res) => {
@@ -376,6 +396,98 @@ export const getMyAttendanceHistory = async (req, res) => {
       error.message || 'Failed to fetch attendance history',
       error,
       'An error occurred while fetching attendance history',
+      500
+    );
+  }
+};
+
+// Core team: export own attendance history as CSV
+export const exportMyAttendanceCsv = async (req, res) => {
+  try {
+    const userId = req.userId;
+    const { startDate, endDate, month, year } = req.query;
+
+    const query = { userId };
+    const hasMonth = month !== undefined && month !== null && month !== '';
+    const hasYear = year !== undefined && year !== null && year !== '';
+    if (hasMonth || hasYear || startDate || endDate) {
+      query.checkInTime = {};
+      if (hasMonth) {
+        const m = Number(month);
+        const y = hasYear ? Number(year) : new Date().getFullYear();
+        if (!m || m < 1 || m > 12 || !y) {
+          return res.error('Invalid month/year', null, 'Month must be 1-12 and year must be valid', 400);
+        }
+        query.checkInTime.$gte = new Date(y, m - 1, 1, 0, 0, 0, 0);
+        query.checkInTime.$lte = new Date(y, m, 0, 23, 59, 59, 999);
+      } else {
+        if (startDate) query.checkInTime.$gte = new Date(startDate);
+        if (endDate) query.checkInTime.$lte = new Date(endDate);
+      }
+    }
+
+    const records = await Attendance.find(query)
+      .populate('userId', 'name email')
+      .populate('itemId', 'itemName')
+      .sort({ checkInTime: -1 })
+      .limit(EXPORT_ROW_LIMIT);
+
+    const csv = toCsv(records, ATTENDANCE_CSV_COLUMNS);
+    sendCsv(res, `my-attendance-export-${Date.now()}.csv`, csv);
+  } catch (error) {
+    console.error('Error exporting attendance CSV:', error);
+    res.error(
+      error.message || 'Failed to export attendance history',
+      error,
+      'An error occurred while exporting attendance history',
+      500
+    );
+  }
+};
+
+// Manager/owner: export a specific user's attendance history as CSV
+export const exportAttendanceCsvForUser = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.error('Invalid user id', null, null, 400);
+    }
+
+    const { startDate, endDate, month, year } = req.query;
+    const query = { userId: new mongoose.Types.ObjectId(userId) };
+
+    const hasMonth = month !== undefined && month !== null && month !== '';
+    const hasYear = year !== undefined && year !== null && year !== '';
+    if (hasMonth || hasYear || startDate || endDate) {
+      query.checkInTime = {};
+      if (hasMonth) {
+        const m = Number(month);
+        const y = hasYear ? Number(year) : new Date().getFullYear();
+        if (!m || m < 1 || m > 12 || !y) {
+          return res.error('Invalid month/year', null, 'Month must be 1-12 and year must be valid', 400);
+        }
+        query.checkInTime.$gte = new Date(y, m - 1, 1, 0, 0, 0, 0);
+        query.checkInTime.$lte = new Date(y, m, 0, 23, 59, 59, 999);
+      } else {
+        if (startDate) query.checkInTime.$gte = new Date(startDate);
+        if (endDate) query.checkInTime.$lte = new Date(endDate);
+      }
+    }
+
+    const records = await Attendance.find(query)
+      .populate('userId', 'name email')
+      .populate('itemId', 'itemName')
+      .sort({ checkInTime: -1 })
+      .limit(EXPORT_ROW_LIMIT);
+
+    const csv = toCsv(records, ATTENDANCE_CSV_COLUMNS);
+    sendCsv(res, `attendance-export-${Date.now()}.csv`, csv);
+  } catch (error) {
+    console.error('Error exporting attendance CSV:', error);
+    res.error(
+      error.message || 'Failed to export attendance history',
+      error,
+      'An error occurred while exporting attendance history',
       500
     );
   }

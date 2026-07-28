@@ -6,7 +6,8 @@ import {
   getSaleById,
   updateSale,
   deleteSale,
-  getAvailableSaleItems
+  getAvailableSaleItems,
+  exportSalesCsv
 } from '../controllers/saleController.js';
 
 const router = Router();
@@ -14,6 +15,7 @@ const router = Router();
 router.post('/create', Auth, authorize('manager', 'owner', 'super_admin'), createSale);
 router.get('/get-all', Auth, authorize('manager', 'owner', 'super_admin'), getAllSales);
 router.get('/available-items', Auth, authorize('manager', 'owner', 'super_admin'), getAvailableSaleItems);
+router.get('/export-csv', Auth, authorize('manager', 'owner', 'super_admin'), exportSalesCsv);
 router.get('/:id', Auth, authorize('manager', 'owner', 'super_admin'), getSaleById);
 router.put('/update/:id', Auth, authorize('manager', 'owner', 'super_admin'), updateSale);
 router.delete('/delete/:id', Auth, authorize('manager', 'owner', 'super_admin'), deleteSale);

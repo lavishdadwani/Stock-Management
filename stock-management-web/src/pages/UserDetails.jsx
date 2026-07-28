@@ -4,11 +4,14 @@ import { useDispatch, useSelector } from 'react-redux';
 import Layout from '../components/Layout';
 import Card from '../components/Card';
 import Button from '../components/Button';
+import Badge from '../components/Badge';
+import Breadcrumbs from '../components/Breadcrumbs';
 import DeleteModal from '../components/modal/DeleteModal';
 import EditUserModal from '../components/users/EditUserModal';
 import { showSnackbar } from '../redux/slices/snackbarSlice';
 import userAPI from '../../services/user';
 import { canManageUserRecord } from '../utils/userPermissions';
+import { getRoleTone, getActiveTone } from '../utils/badgeTones';
 import { FaTrash, FaUserEdit } from 'react-icons/fa';
 import UserAttendanceHistory from '../components/users/UserAttendanceHistory';
 
@@ -26,6 +29,14 @@ const UserDetails = () => {
   const [deleteOpen, setDeleteOpen] = useState(false);
 
   const allowedRoleOptions = useMemo(() => {
+    if (actor?.role === 'super_admin') {
+      return [
+        { value: 'owner', label: 'Owner' },
+        { value: 'manager', label: 'Manager' },
+        { value: 'core_team', label: 'Core Team' },
+        { value: 'super_admin', label: 'Super Admin' }
+      ];
+    }
     if (actor?.role === 'owner') {
       return [
         { value: 'manager', label: 'Manager' },
@@ -65,7 +76,7 @@ const UserDetails = () => {
   }, [id, dispatch]);
 
   useEffect(() => {
-    if (id && (actor?.role === 'manager' || actor?.role === 'owner')) {
+    if (id && ['manager', 'owner', 'super_admin'].includes(actor?.role)) {
       fetchUserDetails();
     }
   }, [id, actor?.role, fetchUserDetails]);
@@ -146,7 +157,7 @@ const UserDetails = () => {
     }
   };
 
-  if (actor?.role !== 'manager' && actor?.role !== 'owner') {
+  if (!['manager', 'owner', 'super_admin'].includes(actor?.role)) {
     return (
       <Layout>
         <div className="max-w-4xl mx-auto">
@@ -160,6 +171,12 @@ const UserDetails = () => {
   return (
     <Layout>
       <div className="max-w-7xl mx-auto">
+        <Breadcrumbs
+          items={[
+            { label: 'Users', to: '/users' },
+            { label: userDetails?.name || 'User Details' }
+          ]}
+        />
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">User Details</h1>
@@ -225,25 +242,15 @@ const UserDetails = () => {
                     <p className="text-gray-600">{userDetails.email || '-'}</p>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 capitalize">
+                    <Badge tone={getRoleTone(userDetails.role)} className="capitalize">
                       {userDetails.role || '—'}
-                    </span>
-                    <span
-                      className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        userDetails.isEmailVerified
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-amber-100 text-amber-900'
-                      }`}
-                    >
+                    </Badge>
+                    <Badge tone={userDetails.isEmailVerified ? 'success' : 'warning'}>
                       {userDetails.isEmailVerified ? 'Email verified' : 'Email not verified'}
-                    </span>
-                    <span
-                      className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        userDetails.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                      }`}
-                    >
+                    </Badge>
+                    <Badge tone={getActiveTone(userDetails.isActive)}>
                       {userDetails.isActive ? 'Active' : 'Inactive'}
-                    </span>
+                    </Badge>
                   </div>
                 </div>
               </div>

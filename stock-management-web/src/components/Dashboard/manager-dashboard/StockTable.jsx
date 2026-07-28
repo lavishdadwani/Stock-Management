@@ -11,6 +11,7 @@ const StockTable = ({
   loading,
   onEdit,
   onDelete,
+  onAdd,
 }) => {
   const columns = getStockColumns(onEdit, onDelete);
 
@@ -26,7 +27,8 @@ const StockTable = ({
       showPagination={true}
       loading={loading}
       rowKey="_id"
-      emptyMessage="No stock items found. Click 'Add Stock' to add new items."
+      emptyMessage="No stock items found."
+      emptyAction={onAdd ? { label: 'Add Stock', onClick: onAdd } : undefined}
     />
   );
 };

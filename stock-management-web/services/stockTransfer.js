@@ -33,6 +33,8 @@ const getStockTransferQuantities = (params) => {
   return apiConfig.client.get(`stock-transfer/get-quantities${queryString}`)
 }
 
+const exportCsv = (params) => apiConfig.client.get("stock-transfer/export-csv", {}, { params, responseType: 'blob' })
+
 export default {
   transferStock,
   getAllStockTransfers,
@@ -40,6 +42,7 @@ export default {
   getStockTransferById,
   updateStockTransfer,
   deleteStockTransfer,
-  getStockTransferQuantities
+  getStockTransferQuantities,
+  exportCsv
 }
 

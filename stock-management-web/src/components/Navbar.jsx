@@ -3,12 +3,14 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { logout } from '../redux/slices/authSlice';
 import { showSnackbar } from '../redux/slices/snackbarSlice';
-import { FaUser, FaSignOutAlt, FaBars, FaTimes } from 'react-icons/fa';
+import { toggleTheme } from '../redux/slices/themeSlice';
+import { FaUser, FaSignOutAlt, FaBars, FaTimes, FaMoon, FaSun } from 'react-icons/fa';
 
 const Navbar = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
+  const themeMode = useSelector((state) => state.theme.mode);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const profileMenuRef = useRef(null);
@@ -71,6 +73,15 @@ const Navbar = () => {
             >
               Dashboard
             </Link>
+
+            <button
+              onClick={() => dispatch(toggleTheme())}
+              className="text-white hover:bg-blue-700 p-2 rounded-md transition-colors"
+              aria-label={themeMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+              title={themeMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              {themeMode === 'dark' ? <FaSun className="w-4 h-4" /> : <FaMoon className="w-4 h-4" />}
+            </button>
 
             {/* Profile Dropdown */}
             <div className="relative" ref={profileMenuRef}>

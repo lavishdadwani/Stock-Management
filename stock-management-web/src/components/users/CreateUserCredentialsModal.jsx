@@ -25,7 +25,8 @@ const CreateUserCredentialsModal = ({
       number: '',
       role: '',
       password: ''
-    }
+    },
+    mode: 'onChange'
   });
 
   const handleClose = () => {
@@ -44,6 +45,7 @@ const CreateUserCredentialsModal = ({
           label="Full Name"
           register={register('name', { required: 'Name is required' })}
           error={errors.name}
+          required
           placeholder="Enter full name"
         />
         <Input
@@ -51,18 +53,21 @@ const CreateUserCredentialsModal = ({
           type="email"
           register={register('email', { required: 'Email is required' })}
           error={errors.email}
+          required
           placeholder="Enter email"
         />
         <Input
           label="Phone Number"
           register={register('number', { required: 'Phone number is required' })}
           error={errors.number}
+          required
           placeholder="Enter phone number"
         />
         <Select
           label="Role"
           register={register('role', { required: 'Role is required' })}
           error={errors.role}
+          required
           options={allowedRoleOptions}
           placeholder="Select role"
         />
@@ -73,6 +78,7 @@ const CreateUserCredentialsModal = ({
             minLength: { value: 8, message: 'Password must be at least 8 characters' }
           })}
           error={errors.password}
+          required
           placeholder="Set login password"
         />
 

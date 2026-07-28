@@ -12,9 +12,14 @@ import {
   SafeAreaView,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
+import { shadow } from "../../constants/shadow";
+import { typography } from "../../constants/typography";
+import { useTheme } from "../../context/ThemeContext";
 
 export default function AppLayout({ children }) {
   const router = useRouter();
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [user, setUser] = useState(null);
 
@@ -42,8 +47,8 @@ export default function AppLayout({ children }) {
 
   return (
     <SafeAreaProvider>
-      <SafeAreaView style={{ flex: 1 }} edges={["top", "bottom"]}>
-        <View style={{ flex: 1 }}>
+      <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
+        <View style={styles.safeArea}>
           <AppHeader
             initials={initials}
             onMenuPress={() => setDrawerOpen(true)}
@@ -63,6 +68,7 @@ export default function AppLayout({ children }) {
           <View
             style={{
               flex: 1,
+              backgroundColor: colors.background,
               paddingBottom: 56 + insets.bottom, // dynamic spacing
             }}
           >
@@ -82,14 +88,14 @@ export default function AppLayout({ children }) {
               style={styles.navBtn}
               onPress={() => router.push("/dashboard")}
             >
-              <Ionicons name="home" size={22} color="#111827" />
+              <Ionicons name="home" size={22} color={colors.text} />
               <Text style={styles.navText}>Home</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.navBtn}
               onPress={() => router.push("/stock-transfer-history")}
             >
-              <Ionicons name="swap-horizontal" size={22} color="#111827" />
+              <Ionicons name="swap-horizontal" size={22} color={colors.text} />
               <Text style={styles.navText}>Transfers</Text>
             </TouchableOpacity>
           </View>
@@ -99,31 +105,31 @@ export default function AppLayout({ children }) {
   );
 }
 
-const styles = StyleSheet.create({
-  bottomNav: {
-    // position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    // height: 56,
-    backgroundColor: "#fff",
-    borderTopWidth: 1,
-    borderTopColor: "#e5e7eb",
-    flexDirection: "row",
-    justifyContent: "space-around",
-    alignItems: "center",
-    elevation: 8,
-  },
-  navBtn: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    height: "100%",
-  },
-  navText: {
-    fontSize: 12,
-    marginTop: 2,
-    fontWeight: "600",
-    color: "#111827",
-  },
-});
+const getStyles = (colors) =>
+  StyleSheet.create({
+    safeArea: { flex: 1, backgroundColor: colors.background },
+    bottomNav: {
+      bottom: 0,
+      left: 0,
+      right: 0,
+      backgroundColor: colors.surface,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      flexDirection: "row",
+      justifyContent: "space-around",
+      alignItems: "center",
+      ...shadow(8),
+    },
+    navBtn: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      height: "100%",
+    },
+    navText: {
+      ...typography.caption,
+      marginTop: 2,
+      fontWeight: "600",
+      color: colors.text,
+    },
+  });

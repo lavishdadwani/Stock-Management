@@ -6,9 +6,12 @@ import StockTable from "./StockTable";
 import AddStockModal from "./AddStockModal";
 import EditStockModal from "./EditStockModal";
 import DeleteModal from "../../modal/DeleteModal";
-import { FaPlus } from "react-icons/fa";
+import ThresholdModal from "./ThresholdModal";
+import { FaPlus, FaBell, FaDownload } from "react-icons/fa";
 import StockCardsGrid from "../StockCardsGrid";
 import stockAPI from "../../../../services/stock";
+import stockThresholdAPI from "../../../../services/stockThreshold";
+import { triggerBlobDownload, parseBlobError } from "../../../utils/downloadFile";
 
 const ManagerDashboardView = () => {
   const dispatch = useDispatch();
@@ -16,6 +19,10 @@ const ManagerDashboardView = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isThresholdModalOpen, setIsThresholdModalOpen] = useState(false);
+  const [thresholdLoading, setThresholdLoading] = useState(false);
+  const [thresholds, setThresholds] = useState({});
+  const [exporting, setExporting] = useState(false);
   const [editingStock, setEditingStock] = useState(null);
   const [stockId, setStockId] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -94,7 +101,7 @@ const ManagerDashboardView = () => {
         });
       }
     } catch (error) {
-      dispatch(showSnackbar("Error fetching stock quantities", "error"));
+      dispatch(showSnackbar({ message: error.message || "Error fetching stock quantities", severity: "error" }));
     }
   };
 
@@ -135,7 +142,12 @@ const ManagerDashboardView = () => {
         fetchStockData();
         fetchStockQuantities();
       } else {
-        dispatch(showSnackbar(response.data?.message || "Failed to delete item", "error"));
+        dispatch(
+          showSnackbar({
+            message: response.data?.displayMessage || response.data?.message || "Failed to delete item",
+            severity: "error"
+          })
+        );
       }
     } catch (error) {
       console.error('Error deleting stock:', error);
@@ -213,7 +225,12 @@ const ManagerDashboardView = () => {
         fetchStockData();
         fetchStockQuantities()
       } else {
-        dispatch(showSnackbar(response.data?.message || "Failed to delete item", "error"));
+        dispatch(
+          showSnackbar({
+            message: response.data?.displayMessage || response.data?.message || "Failed to update item",
+            severity: "error"
+          })
+        );
       }
     } catch (error) {
       dispatch(
@@ -235,6 +252,95 @@ const ManagerDashboardView = () => {
     setIsEditModalOpen(false);
     setEditingStock(null);
   };
+
+  const handleOpenThresholdModal = async () => {
+    setIsThresholdModalOpen(true);
+    try {
+      const response = await stockThresholdAPI.getAll();
+      if (response.ok) {
+        const list = response.data?.data || [];
+        const mapped = list.reduce((acc, item) => {
+          acc[item.itemName] = item.thresholdKg;
+          return acc;
+        }, {});
+        setThresholds(mapped);
+      }
+    } catch (error) {
+      dispatch(
+        showSnackbar({
+          message: error.message || 'Failed to load thresholds',
+          severity: "error",
+        })
+      );
+    }
+  };
+
+  const handleCloseThresholdModal = () => {
+    if (!thresholdLoading) {
+      setIsThresholdModalOpen(false);
+    }
+  };
+
+  const handleThresholdSubmit = async (data) => {
+    setThresholdLoading(true);
+    try {
+      const updates = ['aluminium', 'copper', 'scrap']
+        .filter((itemName) => data[itemName] !== '' && data[itemName] !== undefined && data[itemName] !== null)
+        .map((itemName) => stockThresholdAPI.set({ itemName, thresholdKg: Number(data[itemName]) }));
+
+      if (updates.length === 0) {
+        setIsThresholdModalOpen(false);
+        return;
+      }
+
+      const responses = await Promise.all(updates);
+      const failed = responses.find((response) => !response.ok);
+
+      if (failed) {
+        dispatch(
+          showSnackbar({
+            message: failed.data?.displayMessage || failed.data?.message || 'Failed to save some thresholds',
+            severity: "error",
+          })
+        );
+      } else {
+        dispatch(
+          showSnackbar({
+            message: "Low stock thresholds saved",
+            severity: "success",
+          })
+        );
+        setIsThresholdModalOpen(false);
+      }
+    } catch (error) {
+      dispatch(
+        showSnackbar({
+          message: error.message || "Failed to save thresholds",
+          severity: "error",
+        })
+      );
+    } finally {
+      setThresholdLoading(false);
+    }
+  };
+
+  const handleExportCsv = async () => {
+    setExporting(true);
+    try {
+      const response = await stockAPI.exportCsv();
+      if (response.ok) {
+        triggerBlobDownload(response.data, `stock-export-${Date.now()}.csv`);
+      } else {
+        const message = await parseBlobError(response.data, 'Failed to export stock');
+        dispatch(showSnackbar({ message, severity: "error" }));
+      }
+    } catch (error) {
+      dispatch(showSnackbar({ message: error.message || 'Failed to export stock', severity: "error" }));
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto">
       <div className="mb-6 flex items-center justify-between">
@@ -244,10 +350,29 @@ const ManagerDashboardView = () => {
           </h1>
           <p className="text-gray-600 mt-1">Manage stock items</p>
         </div>
-        <Button onClick={handleAdd} className="flex items-center space-x-2">
-          <FaPlus className="w-4 h-4" />
-          <span>Add Stock</span>
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            onClick={handleExportCsv}
+            loading={exporting}
+            className="flex items-center space-x-2"
+          >
+            <FaDownload className="w-4 h-4" />
+            <span>Export CSV</span>
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handleOpenThresholdModal}
+            className="flex items-center space-x-2"
+          >
+            <FaBell className="w-4 h-4" />
+            <span>Low Stock Alerts</span>
+          </Button>
+          <Button onClick={handleAdd} className="flex items-center space-x-2">
+            <FaPlus className="w-4 h-4" />
+            <span>Add Stock</span>
+          </Button>
+        </div>
       </div>
 
       {/* Stock Cards */}
@@ -263,6 +388,7 @@ const ManagerDashboardView = () => {
         loading={loading}
         onEdit={handleEdit}
         onDelete={handleDelete}
+        onAdd={handleAdd}
       />
 
       {/* Add Stock Modal */}
@@ -290,6 +416,15 @@ const ManagerDashboardView = () => {
         // itemName={stockId?.itemName}
         loading={loading}
         title="Delete Stock Item"
+      />
+
+      {/* Threshold Modal */}
+      <ThresholdModal
+        isOpen={isThresholdModalOpen}
+        onClose={handleCloseThresholdModal}
+        onSubmit={handleThresholdSubmit}
+        loading={thresholdLoading}
+        initialData={thresholds}
       />
     </div>
   );

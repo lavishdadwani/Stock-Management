@@ -123,18 +123,6 @@ const Login = () => {
             >
               Sign in
             </Button>
-
-            <div className="text-center">
-              <p className="text-sm text-gray-600">
-                For testing you can use manager email: test11@mailinator.com and password: Test@123{' '}
-                {/* <Link
-                  to="/register"
-                  className="font-medium text-blue-600 hover:text-blue-500"
-                >
-                  Sign up
-                </Link> */}
-              </p>
-            </div>
           </form>
         </Card>
       </div>

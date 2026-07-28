@@ -1,6 +1,8 @@
 import React from 'react';
 import { FaEdit, FaTrash } from 'react-icons/fa';
 import { canManageUserRecord } from '../../../utils/userPermissions';
+import Badge from '../../Badge';
+import { getRoleTone, getActiveTone } from '../../../utils/badgeTones';
 
 export const getUsersColumns = (onNameClick, { onEdit, onDelete, actorUser }) => {
   const cols = [
@@ -31,32 +33,27 @@ export const getUsersColumns = (onNameClick, { onEdit, onDelete, actorUser }) =>
     {
       title: 'Role',
       dataIndex: 'role',
-      key: 'role'
+      key: 'role',
+      render: (value) => (
+        <Badge tone={getRoleTone(value)} className="capitalize">
+          {value}
+        </Badge>
+      )
     },
     {
       title: 'Email verified',
       key: 'isEmailVerified',
       render: (_, record) => (
-        <span
-          className={`px-2 py-1 rounded-full text-xs font-medium ${
-            record.isEmailVerified ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-900'
-          }`}
-        >
+        <Badge tone={record.isEmailVerified ? 'success' : 'warning'}>
           {record.isEmailVerified ? 'Yes' : 'No'}
-        </span>
+        </Badge>
       )
     },
     {
       title: 'Status',
       key: 'status',
       render: (_, record) => (
-        <span
-          className={`px-2 py-1 rounded-full text-xs font-medium ${
-            record.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-          }`}
-        >
-          {record.isActive ? 'Active' : 'Inactive'}
-        </span>
+        <Badge tone={getActiveTone(record.isActive)}>{record.isActive ? 'Active' : 'Inactive'}</Badge>
       )
     },
     {

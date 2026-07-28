@@ -19,12 +19,15 @@ const deleteSale = (id) => apiConfig.client.delete(`sales/delete/${id}`);
 
 const getAvailableItems = () => apiConfig.client.get("sales/available-items");
 
+const exportCsv = (params) => apiConfig.client.get("sales/export-csv", {}, { params, responseType: 'blob' });
+
 export default {
   createSale,
   getAllSales,
   getSaleById,
   updateSale,
   deleteSale,
-  getAvailableItems
+  getAvailableItems,
+  exportCsv
 };
 

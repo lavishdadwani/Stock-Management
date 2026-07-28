@@ -3,6 +3,7 @@ import {
   getVerificationEmailTemplate,
   getPasswordResetEmailTemplate,
   getWelcomeEmailTemplate,
+  getLowStockAlertTemplate,
 } from './emailTemplates.js';
 
 // Create reusable transporter object using SMTP transport
@@ -87,9 +88,37 @@ const sendWelcomeEmail = async (email, name) => {
   }
 };
 
+// Send low stock alert email to one or more recipients
+const sendLowStockAlert = async (recipientEmails, itemName, currentQuantity, thresholdQuantity) => {
+  try {
+    if (!recipientEmails || recipientEmails.length === 0) {
+      return { success: false, error: 'No recipients configured' };
+    }
+
+    const transporter = createTransporter();
+    const html = getLowStockAlertTemplate(itemName, currentQuantity, thresholdQuantity);
+
+    const mailOptions = {
+      from: `"Stock Management" <${process.env.SMTP_USER}>`,
+      to: recipientEmails.join(', '),
+      subject: `Low Stock Alert: ${itemName}`,
+      html: html,
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log('Low stock alert email sent:', info.messageId);
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    console.error('Error sending low stock alert email:', error);
+    // Don't throw - a failed alert email shouldn't fail the stock operation that triggered it
+    return { success: false, error: error.message };
+  }
+};
+
 export {
   sendVerificationEmail,
   sendPasswordResetEmail,
   sendWelcomeEmail,
+  sendLowStockAlert,
 };
 

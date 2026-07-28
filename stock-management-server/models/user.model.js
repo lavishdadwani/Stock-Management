@@ -142,7 +142,10 @@ UserSchema.statics.findByEmail = async (email) => {
 UserSchema.methods.generateToken = async function () {
   try {
     const user = this;
-    const SecretKey = process.env.JWT_SECRET || `${user.email}-${new Date(user.createdAt).getTime()}`;
+    if (!process.env.JWT_SECRET) {
+      throw new Error('JWT_SECRET is not configured.');
+    }
+    const SecretKey = process.env.JWT_SECRET;
     const token = await jwt.sign(
       { 
         id: user._id,
@@ -197,8 +200,10 @@ UserSchema.methods.clearPasswordResetToken = async function () {
 
 UserSchema.methods.verifyToken = function (token) {
   try {
-    const SecretKey = process.env.JWT_SECRET || `${this.email}-${new Date(this.createdAt).getTime()}`;
-    const decoded = jwt.verify(token, SecretKey);
+    if (!process.env.JWT_SECRET) {
+      throw new Error('JWT_SECRET is not configured.');
+    }
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     return decoded;
   } catch (err) {
     return null;

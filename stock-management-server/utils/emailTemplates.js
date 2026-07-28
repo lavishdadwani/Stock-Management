@@ -253,9 +253,87 @@ const getWelcomeEmailTemplate = (name) => {
   `;
 };
 
+/**
+ * Low Stock Alert Template
+ */
+const getLowStockAlertTemplate = (itemName, currentQuantity, thresholdQuantity) => {
+  const displayName = itemName.charAt(0).toUpperCase() + itemName.slice(1);
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Low Stock Alert</title>
+      <style>
+        body {
+          font-family: Arial, sans-serif;
+          line-height: 1.6;
+          color: #333;
+          margin: 0;
+          padding: 0;
+          background-color: #f4f4f4;
+        }
+        .container {
+          max-width: 600px;
+          margin: 0 auto;
+          padding: 20px;
+          background-color: #ffffff;
+        }
+        .header {
+          background-color: #dc2626;
+          color: white;
+          padding: 20px;
+          text-align: center;
+          border-radius: 5px 5px 0 0;
+        }
+        .content {
+          padding: 30px 20px;
+        }
+        .warning {
+          background-color: #fef3c7;
+          padding: 15px;
+          border-left: 4px solid #f59e0b;
+          margin: 20px 0;
+          border-radius: 4px;
+        }
+        .footer {
+          margin-top: 30px;
+          font-size: 12px;
+          color: #666;
+          text-align: center;
+          padding-top: 20px;
+          border-top: 1px solid #eee;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h2>⚠️ Low Stock Alert</h2>
+        </div>
+        <div class="content">
+          <p>Hi,</p>
+          <p><strong>${displayName}</strong> stock has dropped below the configured threshold.</p>
+          <div class="warning">
+            <p><strong>Current quantity:</strong> ${currentQuantity} kg</p>
+            <p><strong>Threshold:</strong> ${thresholdQuantity} kg</p>
+          </div>
+          <p>Please arrange to restock ${displayName} soon.</p>
+        </div>
+        <div class="footer">
+          <p>&copy; ${new Date().getFullYear()} Stock Management System. All rights reserved.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+};
+
 export {
   getVerificationEmailTemplate,
   getPasswordResetEmailTemplate,
   getWelcomeEmailTemplate,
+  getLowStockAlertTemplate,
 };
 

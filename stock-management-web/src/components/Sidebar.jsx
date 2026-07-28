@@ -1,15 +1,16 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-import { 
-  FaHome, 
-  FaBox, 
-  FaChartBar, 
-  FaUsers, 
+import {
+  FaHome,
+  FaBox,
+  FaHistory,
+  FaChartLine,
+  FaUsers,
   FaUserFriends,
   FaShoppingCart,
-  FaCog, 
-  FaChevronLeft, 
+  FaCog,
+  FaChevronLeft,
   FaChevronRight,
   FaWarehouse,
   FaExchangeAlt
@@ -39,55 +40,61 @@ const Sidebar = ({ isOpen: controlledIsOpen, onToggle }) => {
       name: 'Dashboard',
       icon: FaHome,
       path: '/',
-      roles: ['manager', 'owner', 'core_team'], 
+      roles: ['manager', 'owner', 'core_team', 'super_admin'],
     },
     {
       name: 'Stock',
       icon: FaBox,
       path: '/stock',
-      roles: ['manager', 'owner'],
+      roles: ['manager', 'owner', 'super_admin'],
     },
-    // {
-    //   name: 'Inventory',
-    //   icon: FaWarehouse,
-    //   path: '/inventory',
-    //   roles: ['manager', 'owner'],
-    // },
     {
       name: 'Stock Transfer',
       icon: FaExchangeAlt,
       path: '/stock-transfer',
-      roles: ['manager', 'owner', 'core_team'], 
+      roles: ['manager', 'owner', 'core_team', 'super_admin'],
     },
-    // {
-    //   name: 'Reports',
-    //   icon: FaChartBar,
-    //   path: '/reports',
-    //   roles: ['manager', 'owner'],
-    // },
+    {
+      name: 'Producible Items',
+      icon: FaWarehouse,
+      path: '/producible-items',
+      roles: ['manager', 'owner', 'super_admin'],
+    },
+    {
+      name: 'Activity Log',
+      icon: FaHistory,
+      path: '/reports',
+      roles: ['manager', 'owner', 'super_admin'],
+    },
     {
       name: 'Customers',
       icon: FaUserFriends,
       path: '/customers',
-      roles: ['manager', 'owner'],
+      roles: ['manager', 'owner', 'super_admin'],
     },
     {
       name: 'Sales',
       icon: FaShoppingCart,
       path: '/sales',
-      roles: ['manager', 'owner'],
+      roles: ['manager', 'owner', 'super_admin'],
+    },
+    {
+      name: 'Analytics',
+      icon: FaChartLine,
+      path: '/analytics',
+      roles: ['manager', 'owner', 'super_admin'],
     },
     {
       name: 'Users',
       icon: FaUsers,
       path: '/users',
-      roles: ['manager', 'owner'],
+      roles: ['manager', 'owner', 'super_admin'],
     },
     {
       name: 'Settings',
       icon: FaCog,
       path: '/settings',
-      roles: ['manager', 'owner'],
+      roles: ['manager', 'owner', 'super_admin'],
     },
   ];
 

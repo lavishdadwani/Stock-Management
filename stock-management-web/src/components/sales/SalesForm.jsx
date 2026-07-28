@@ -26,7 +26,8 @@ const SalesForm = ({
       pricePerPiece: '',
       saleDate: '',
       notes: ''
-    }
+    },
+    mode: 'onChange'
   });
 
   const quantity = useWatch({ control, name: 'quantity' });
@@ -99,6 +100,7 @@ const SalesForm = ({
             }
           })}
           error={errors.quantity}
+          required
           min="1"
         />
         <Input
@@ -126,7 +128,7 @@ const SalesForm = ({
           {...register('notes')}
           rows={3}
           placeholder="Optional notes"
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
         />
       </div>
 

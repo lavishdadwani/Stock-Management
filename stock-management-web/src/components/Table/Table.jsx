@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import Pagination from './Pagination';
 import LoadingMessage from '../loader/LoadingMessage';
 import Card from '../Card';
@@ -12,25 +12,13 @@ const Table = ({
   loading = false,
   rowKey = '_id',
   className = '',
-  enableExport = false,
-  exportConfig,
   toolbarComponent,
   columns = [],
   dataSource = [],
   emptyMessage = 'No data available',
+  emptyAction,
   title = '',
-  onAddClick,
-  onExportClick,
-  ...props
 }) => {
-  const [showExportModal, setShowExportModal] = useState(false);
-  const [exportLoader, setExportLoader] = useState(false);
-
-  // Calculate pagination
-  const totalPages = Math.ceil(total / pageSize);
-  const startIndex = (currentPage - 1) * pageSize;
-  const endIndex = Math.min(startIndex + pageSize, total);
-
   const handlePageChange = (page) => {
     if (onPageChangeHandler) {
       onPageChangeHandler(page);
@@ -56,32 +44,10 @@ const Table = ({
 
       {/* Table */}
       <Card className="overflow-hidden p-0">
-        {/* Table Header with Title and Actions */}
-        {(title || onAddClick || onExportClick) && (
-          <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-            {title && (
-              <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
-            )}
-            <div className="flex items-center gap-3">
-              {onAddClick && (
-                <button
-                  onClick={onAddClick}
-                  disabled={true}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-600"
-                >
-                  Add
-                </button>
-              )}
-              {onExportClick && (
-                <button
-                  onClick={onExportClick}
-                  disabled={true}
-                  className="px-4 py-2 bg-gray-600 text-white rounded-lg font-medium hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-gray-600"
-                >
-                  Export
-                </button>
-              )}
-            </div>
+        {/* Table Header */}
+        {title && (
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
           </div>
         )}
 
@@ -124,7 +90,17 @@ const Table = ({
                     colSpan={columns.length}
                     className="px-6 py-12 text-center text-gray-500"
                   >
-                    {emptyMessage}
+                    <div className="flex flex-col items-center gap-3">
+                      <span>{emptyMessage}</span>
+                      {emptyAction && (
+                        <button
+                          onClick={emptyAction.onClick}
+                          className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                        >
+                          {emptyAction.label}
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ) : (

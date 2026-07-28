@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { Auth, authorize } from '../middleware/auth.js';
+import { authLimiter } from '../middleware/rateLimit.js';
 import {
   register,
   login,
@@ -23,11 +24,11 @@ const router = Router();
 
 // Public routes
 // router.post('/register', register); // Disabled: credentials are created from Users module by manager/owner
-router.post('/login', login);
+router.post('/login', authLimiter, login);
 router.get('/verify-email/:token', verifyEmail);
-router.post('/resend-verification', resendVerification);
-router.post('/forgot-password', forgotPassword);
-router.post('/reset-password/:token', resetPassword);
+router.post('/resend-verification', authLimiter, resendVerification);
+router.post('/forgot-password', authLimiter, forgotPassword);
+router.post('/reset-password/:token', authLimiter, resetPassword);
 
 // Protected routes
 router.get('/me', Auth, getCurrentUser);

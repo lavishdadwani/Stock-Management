@@ -18,6 +18,104 @@ body {
   box-sizing: border-box;
 }
 
+/*
+ * Dark mode.
+ *
+ * The app is built almost entirely with raw Tailwind neutral-gray utilities
+ * (bg-white, text-gray-900, border-gray-200, ...) rather than a shared set of
+ * semantic classes. Rather than retrofitting a `dark:` variant onto every one
+ * of the hundreds of call sites across ~20 pages and ~60 components, this
+ * block remaps the small set of utility classes actually used (surveyed via
+ * grep) when the `.dark` class is present on <html>. Two-class selectors
+ * (`.dark .bg-white`) automatically win specificity over the single-class
+ * Tailwind utilities they override, so source order doesn't matter.
+ *
+ * New components should still prefer explicit `dark:` variants where the
+ * dark-mode treatment needs to differ from this default remap.
+ */
+html.dark {
+  color-scheme: dark;
+}
+
+html.dark body {
+  background-color: #111827;
+}
+
+/* Page / surface backgrounds */
+html.dark .bg-gray-50 { background-color: #111827; }
+html.dark .bg-white { background-color: #1f2937; }
+html.dark .bg-gray-100 { background-color: #374151; }
+html.dark .bg-gray-200 { background-color: #4b5563; }
+html.dark .bg-gray-300 { background-color: #6b7280; }
+html.dark .bg-gray-600 { background-color: #9ca3af; }
+html.dark .bg-gray-700 { background-color: #d1d5db; color: #111827; }
+html.dark .bg-slate-100 { background-color: #374151; }
+
+/* Text */
+html.dark .text-gray-900 { color: #f3f4f6; }
+html.dark .text-gray-800 { color: #e5e7eb; }
+html.dark .text-gray-700 { color: #d1d5db; }
+html.dark .text-gray-600 { color: #d1d5db; }
+html.dark .text-gray-500 { color: #9ca3af; }
+html.dark .text-gray-400 { color: #9ca3af; }
+html.dark .text-slate-800 { color: #e5e7eb; }
+
+/* Borders */
+html.dark .border-gray-100 { border-color: #374151; }
+html.dark .border-gray-200 { border-color: #374151; }
+html.dark .border-gray-300 { border-color: #4b5563; }
+
+/* Status/badge chips - light pastel bg + dark text (light mode) becomes a
+   dark chip bg + light text (dark mode), keeping the same hue identity. */
+html.dark .bg-green-100 { background-color: rgba(34, 197, 94, 0.18); }
+html.dark .text-green-800 { color: #86efac; }
+html.dark .text-green-600 { color: #4ade80; }
+html.dark .text-green-100 { color: #bbf7d0; }
+
+html.dark .bg-red-100 { background-color: rgba(239, 68, 68, 0.18); }
+html.dark .bg-red-50 { background-color: rgba(239, 68, 68, 0.12); }
+html.dark .text-red-800 { color: #fca5a5; }
+html.dark .text-red-500 { color: #f87171; }
+
+html.dark .bg-blue-100 { background-color: rgba(59, 130, 246, 0.18); }
+html.dark .bg-blue-50 { background-color: rgba(59, 130, 246, 0.12); }
+html.dark .text-blue-800 { color: #93c5fd; }
+html.dark .text-blue-100 { color: #bfdbfe; }
+
+html.dark .bg-amber-100 { background-color: rgba(245, 158, 11, 0.18); }
+html.dark .text-amber-900 { color: #fcd34d; }
+html.dark .bg-yellow-100 { background-color: rgba(234, 179, 8, 0.18); }
+html.dark .bg-yellow-50 { background-color: rgba(234, 179, 8, 0.12); }
+html.dark .text-yellow-800 { color: #fde047; }
+html.dark .text-yellow-600 { color: #facc15; }
+
+html.dark .bg-purple-100 { background-color: rgba(168, 85, 247, 0.18); }
+html.dark .text-purple-800 { color: #d8b4fe; }
+html.dark .text-purple-100 { color: #e9d5ff; }
+
+html.dark .text-orange-100 { color: #fed7aa; }
+html.dark .text-orange-600 { color: #fb923c; }
+
+/* Shadows read as too heavy on a dark surface - soften them */
+html.dark .shadow-md,
+html.dark .shadow-lg {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+/* Auth pages' background gradient (Login/Register/ForgotPassword/ResetPassword) */
+html.dark .from-blue-50 { --tw-gradient-from: #111827 var(--tw-gradient-from-position); --tw-gradient-to: rgb(17 24 39 / 0) var(--tw-gradient-to-position); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to); }
+html.dark .to-blue-100 { --tw-gradient-to: #1f2937 var(--tw-gradient-to-position); }
+
+/* react-responsive-modal ships its own CSS (not Tailwind classes), so the
+   global utility overrides above can't reach it - it needs its own rule. */
+html.dark .react-responsive-modal-modal {
+  background: #1f2937;
+  color: #f3f4f6;
+}
+html.dark .react-responsive-modal-closeButton {
+  color: #f3f4f6;
+}
+
 /* RC Pagination Custom Styles */
 .rc-pagination {
   display: flex;
@@ -136,4 +234,24 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+/* rc-pagination dark mode - these use literal `background-color: white` etc.
+   rather than Tailwind classes, so they need their own explicit overrides. */
+html.dark .rc-pagination-item,
+html.dark .rc-pagination-prev,
+html.dark .rc-pagination-next,
+html.dark .rc-pagination-jump-prev,
+html.dark .rc-pagination-jump-next {
+  background-color: #1f2937;
+  border-color: #4b5563;
+  color: #d1d5db;
+}
+
+html.dark .rc-pagination-item:hover:not(.rc-pagination-item-active):not(.rc-pagination-item-disabled),
+html.dark .rc-pagination-prev:hover:not(.rc-pagination-item-disabled),
+html.dark .rc-pagination-next:hover:not(.rc-pagination-item-disabled),
+html.dark .rc-pagination-jump-prev:hover,
+html.dark .rc-pagination-jump-next:hover {
+  background-color: rgba(59, 130, 246, 0.15);
 }

@@ -2,16 +2,24 @@
 import { View, Text, TextInput, StyleSheet, Alert, Pressable } from "react-native";
 import { useState } from "react";
 import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import authApi from "../api/authApi";
 import { validateLogin } from "../utils/validations";
+import { shadow } from "../constants/shadow";
+import { spacing } from "../constants/spacing";
+import { typography } from "../constants/typography";
+import { useTheme } from "../context/ThemeContext";
 
 export default function LoginScreen() {
   const router = useRouter();
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
+  const [focusedField, setFocusedField] = useState(null);
 
   const onSubmit = async () => {
     const validationErrors = validateLogin({ email, password });
@@ -43,17 +51,28 @@ export default function LoginScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.card}>
+        <View style={styles.logoWrap}>
+          <Ionicons name="cube" size={30} color="#fff" />
+        </View>
+
         <Text style={styles.title}>Stock Management</Text>
         <Text style={styles.subtitle}>Sign in to continue</Text>
 
         <Text style={styles.label}>Email</Text>
         <TextInput
           placeholder="you@company.com"
+          placeholderTextColor={colors.textMuted}
           autoCapitalize="none"
           keyboardType="email-address"
           editable={!isLoading}
-          style={[styles.input, errors.email && styles.inputError]}
+          style={[
+            styles.input,
+            focusedField === "email" && styles.inputFocused,
+            errors.email && styles.inputError,
+          ]}
           value={email}
+          onFocus={() => setFocusedField("email")}
+          onBlur={() => setFocusedField(null)}
           onChangeText={(text) => {
             setEmail(text);
             setErrors((prev) => ({ ...prev, email: null }));
@@ -64,10 +83,17 @@ export default function LoginScreen() {
         <Text style={styles.label}>Password</Text>
         <TextInput
           placeholder="Password"
+          placeholderTextColor={colors.textMuted}
           secureTextEntry
           editable={!isLoading}
-          style={[styles.input, errors.password && styles.inputError]}
+          style={[
+            styles.input,
+            focusedField === "password" && styles.inputFocused,
+            errors.password && styles.inputError,
+          ]}
           value={password}
+          onFocus={() => setFocusedField("password")}
+          onBlur={() => setFocusedField(null)}
           onChangeText={(text) => {
             setPassword(text);
             setErrors((prev) => ({ ...prev, password: null }));
@@ -91,41 +117,61 @@ export default function LoginScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: "center",
-    padding: 20,
-    backgroundColor: "#f3f6fb",
-  },
-  card: {
-    backgroundColor: "#fff",
-    borderRadius: 14,
-    padding: 18,
-    elevation: 3,
-  },
-  title: { fontSize: 22, fontWeight: "700", textAlign: "center" },
-  subtitle: { marginTop: 6, marginBottom: 18, color: "#6b7280", textAlign: "center" },
-  label: { fontSize: 12, color: "#374151", marginBottom: 6, fontWeight: "600" },
-  input: {
-    borderWidth: 1,
-    borderColor: "#d1d5db",
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 10,
-    marginBottom: 10,
-    backgroundColor: "#fff",
-  },
-  inputError: { borderColor: "#ef4444" },
-  error: { color: "#ef4444", marginBottom: 10 },
-  button: {
-    marginTop: 6,
-    backgroundColor: "#2563eb",
-    paddingVertical: 12,
-    borderRadius: 10,
-    alignItems: "center",
-  },
-  buttonPressed: { opacity: 0.9 },
-  buttonDisabled: { opacity: 0.6 },
-  buttonText: { color: "#fff", fontWeight: "700" },
-});
+const getStyles = (colors) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      justifyContent: "center",
+      padding: spacing.xl,
+      backgroundColor: colors.background,
+    },
+    card: {
+      backgroundColor: colors.surface,
+      borderRadius: 14,
+      padding: spacing.xl,
+      ...shadow(3),
+    },
+    logoWrap: {
+      width: 64,
+      height: 64,
+      borderRadius: 32,
+      backgroundColor: colors.primary,
+      alignItems: "center",
+      justifyContent: "center",
+      alignSelf: "center",
+      marginBottom: spacing.lg,
+      ...shadow(4),
+    },
+    title: { ...typography.h1, textAlign: "center", color: colors.text },
+    subtitle: {
+      ...typography.body,
+      marginTop: spacing.xs,
+      marginBottom: spacing.xl,
+      color: colors.textMuted,
+      textAlign: "center",
+    },
+    label: { ...typography.label, color: colors.textSecondary, marginBottom: spacing.xs },
+    input: {
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm + 2,
+      borderRadius: 10,
+      marginBottom: spacing.sm,
+      backgroundColor: colors.surface,
+      color: colors.text,
+    },
+    inputFocused: { borderColor: colors.primary, borderWidth: 1.5 },
+    inputError: { borderColor: colors.danger },
+    error: { ...typography.caption, color: colors.danger, marginBottom: spacing.sm },
+    button: {
+      marginTop: spacing.xs,
+      backgroundColor: colors.primary,
+      paddingVertical: spacing.md,
+      borderRadius: 10,
+      alignItems: "center",
+    },
+    buttonPressed: { opacity: 0.9 },
+    buttonDisabled: { opacity: 0.6 },
+    buttonText: { ...typography.bodyBold, color: "#fff" },
+  });

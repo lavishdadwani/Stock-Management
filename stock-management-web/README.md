@@ -1,16 +1,40 @@
-# React + Vite
+# Stock Management (Web)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React + Vite admin panel for managers/owners (stock, transfers, customers, sales, users) and a
+lighter dashboard for core team members (check-in/out, personal transfer history).
 
-Currently, two official plugins are available:
+See the [root README](../README.md) for the full monorepo picture (architecture, roles, all three apps).
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Setup
 
-## React Compiler
+```bash
+npm install
+cp .env.example .env
+# Edit .env with your API URL
+npm run dev              # http://localhost:5173
+```
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Environment variables
 
-## Expanding the ESLint configuration
+| Variable | Description |
+|----------|-------------|
+| `VITE_API_URL` | API base URL, must end with `/api/` (e.g. `http://localhost:8000/api/`) |
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Scripts
+
+- `npm run dev` — Vite dev server
+- `npm run build` — production build to `dist/`
+- `npm run preview` — preview the production build locally
+- `npm run lint` — ESLint
+
+## Structure
+
+- `src/pages/` — one component per route (Login, Dashboard, Stock, Users, Sales, Customers, …)
+- `src/components/` — UI primitives, role-specific dashboards, tables, modals
+- `src/redux/` — auth + snackbar state
+- `services/` — Apisauce/Axios API client per domain, all reading from `VITE_API_URL`
+
+## Deployment
+
+Configured for **Vercel** — `vercel.json` handles SPA routing. Set `VITE_API_URL` to the production
+API URL in the Vercel project's environment variables.

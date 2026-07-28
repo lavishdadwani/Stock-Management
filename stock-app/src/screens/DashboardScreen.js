@@ -5,15 +5,15 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
-  TextInput,
 } from "react-native";
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
-import { Dropdown } from "react-native-element-dropdown";
+import { Ionicons } from "@expo/vector-icons";
 
 import AppLayout from "../components/layout/AppLayout";
+import DateRangeFilter from "../components/filters/DateRangeFilter";
 import StockCard from "../components/ui/StockCard";
 import ProductCard from "../components/ui/ProductCard";
 
@@ -22,9 +22,17 @@ import attendanceApi from "../api/attendanceApi";
 import CheckOutModal from "../components/CheckOutModal";
 import dashboardApi, { getCityName } from "../api/dashboardApi";
 import * as ImageManipulator from "expo-image-manipulator";
+import { shadow } from "../constants/shadow";
+import { spacing } from "../constants/spacing";
+import { typography } from "../constants/typography";
+import { useTheme } from "../context/ThemeContext";
 
-/** Build optional check-in payload: photo (data URL), GPS. Omits missing parts. */
-async function buildOptionalCheckInPayload() {
+/**
+ * Build the check-in payload: photo (data URL, required) + GPS (optional -
+ * silently omitted from the payload if permission is denied, but the user
+ * is notified either way so a missing location is never a silent surprise).
+ */
+async function buildCheckInPayload() {
   const payload = {};
 
   const camPerm = await ImagePicker.requestCameraPermissionsAsync();
@@ -75,7 +83,16 @@ async function buildOptionalCheckInPayload() {
       payload.lng = pos.coords.longitude;
     } catch (e) {
       if (__DEV__) console.warn("Location check-in:", e?.message || e);
+      Alert.alert(
+        "Location unavailable",
+        "Checking in without a location - we couldn't get your current position."
+      );
     }
+  } else {
+    Alert.alert(
+      "Location not shared",
+      "Checking in without a location since location permission wasn't granted."
+    );
   }
 
   if (payload.lat != null && payload.lng != null) {
@@ -96,6 +113,8 @@ async function buildOptionalCheckInPayload() {
 
 export default function Dashboard() {
   const router = useRouter();
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
 
   const [isCheckedIn, setIsCheckedIn] = useState(false);
   const [checkInLoading, setCheckInLoading] = useState(false);
@@ -117,32 +136,6 @@ export default function Dashboard() {
   );
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-
-  const yearOptions = useMemo(() => {
-    const current = new Date().getFullYear();
-    return [current - 1, current, current + 1].map((y) => ({
-      label: String(y),
-      value: String(y),
-    }));
-  }, []);
-
-  const monthOptions = useMemo(
-    () => [
-      { label: "Jan", value: "1" },
-      { label: "Feb", value: "2" },
-      { label: "Mar", value: "3" },
-      { label: "Apr", value: "4" },
-      { label: "May", value: "5" },
-      { label: "Jun", value: "6" },
-      { label: "Jul", value: "7" },
-      { label: "Aug", value: "8" },
-      { label: "Sep", value: "9" },
-      { label: "Oct", value: "10" },
-      { label: "Nov", value: "11" },
-      { label: "Dec", value: "12" },
-    ],
-    []
-  );
 
   const syncCheckInStatus = useCallback(async () => {
     try {
@@ -227,7 +220,7 @@ export default function Dashboard() {
   const handleCheckIn = async () => {
     setCheckInLoading(true);
     try {
-      const payload = await buildOptionalCheckInPayload();
+      const payload = await buildCheckInPayload();
       if (!payload) return; // stop if validation failed
       const res = await attendanceApi.checkIn(payload);
 
@@ -305,127 +298,49 @@ export default function Dashboard() {
             <StockCard
               title="Aluminium"
               value={transferredStockQuantities.aluminium?.quantity}
+              unit={transferredStockQuantities.aluminium?.unit}
+              icon="layers-outline"
+              accentColor={colors.primary}
             />
             <StockCard
               title="Copper"
               value={transferredStockQuantities.copper?.quantity}
+              unit={transferredStockQuantities.copper?.unit}
+              icon="flash-outline"
+              accentColor={colors.warning}
             />
             <StockCard
               title="Scrap"
               value={transferredStockQuantities.scrap?.quantity}
+              unit={transferredStockQuantities.scrap?.unit}
+              icon="trash-outline"
+              accentColor={colors.textMuted}
             />
           </View>
 
           <Text style={styles.section}>Products</Text>
 
-          <View style={styles.filterRow}>
-            <TouchableOpacity
-              style={[
-                styles.filterPill,
-                productFilterMode === "all" && styles.filterPillActive,
-              ]}
-              onPress={() => setProductFilterMode("all")}
-            >
-              <Text
-                style={[
-                  styles.filterPillText,
-                  productFilterMode === "all" && styles.filterPillTextActive,
-                ]}
-              >
-                All
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.filterPill,
-                productFilterMode === "month" && styles.filterPillActive,
-              ]}
-              onPress={() => setProductFilterMode("month")}
-            >
-              <Text
-                style={[
-                  styles.filterPillText,
-                  productFilterMode === "month" && styles.filterPillTextActive,
-                ]}
-              >
-                Monthly
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.filterPill,
-                productFilterMode === "range" && styles.filterPillActive,
-              ]}
-              onPress={() => setProductFilterMode("range")}
-            >
-              <Text
-                style={[
-                  styles.filterPillText,
-                  productFilterMode === "range" && styles.filterPillTextActive,
-                ]}
-              >
-                Date range
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          {productFilterMode === "month" ? (
-            <View style={styles.filterControls}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.filterLabel}>Month</Text>
-                <Dropdown
-                  style={styles.dropdown}
-                  data={monthOptions}
-                  labelField="label"
-                  valueField="value"
-                  value={selectedMonth}
-                  placeholder="Select month"
-                  onChange={(item) => setSelectedMonth(item.value)}
-                />
-              </View>
-              <View style={{ width: 12 }} />
-              <View style={{ width: 120 }}>
-                <Text style={styles.filterLabel}>Year</Text>
-                <Dropdown
-                  style={styles.dropdown}
-                  data={yearOptions}
-                  labelField="label"
-                  valueField="value"
-                  value={selectedYear}
-                  placeholder="Select year"
-                  onChange={(item) => setSelectedYear(item.value)}
-                />
-              </View>
-            </View>
-          ) : null}
-
-          {productFilterMode === "range" ? (
-            <View style={styles.filterControls}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.filterLabel}>Start date</Text>
-                <TextInput
-                  style={styles.input}
-                  value={startDate}
-                  onChangeText={setStartDate}
-                  placeholder="YYYY-MM-DD"
-                />
-              </View>
-              <View style={{ width: 12 }} />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.filterLabel}>End date</Text>
-                <TextInput
-                  style={styles.input}
-                  value={endDate}
-                  onChangeText={setEndDate}
-                  placeholder="YYYY-MM-DD"
-                />
-              </View>
-            </View>
-          ) : null}
+          <DateRangeFilter
+            mode={productFilterMode}
+            onModeChange={setProductFilterMode}
+            modes={[
+              { value: "all", label: "All" },
+              { value: "month", label: "Monthly" },
+              { value: "range", label: "Date range" },
+            ]}
+            month={selectedMonth}
+            onMonthChange={setSelectedMonth}
+            year={selectedYear}
+            onYearChange={setSelectedYear}
+            startDate={startDate}
+            onStartDateChange={setStartDate}
+            endDate={endDate}
+            onEndDateChange={setEndDate}
+          />
 
           {products.length === 0 ? (
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyIcon}>📦</Text>
+              <Ionicons name="cube-outline" size={40} color={colors.textMuted} />
               <Text style={styles.emptyText}>No products available yet</Text>
             </View>
           ) : (
@@ -436,7 +351,11 @@ export default function Dashboard() {
         </ScrollView>
 
         <TouchableOpacity
-          style={[styles.fab, isCheckedIn && { backgroundColor: "red" }]}
+          style={[
+            styles.fab,
+            isCheckedIn && { backgroundColor: colors.danger },
+            (checkInLoading || checkOutLoading) && styles.fabDisabled,
+          ]}
           disabled={checkInLoading || checkOutLoading}
           onPress={() => {
             if (isCheckedIn) {
@@ -446,7 +365,12 @@ export default function Dashboard() {
             }
           }}
         >
-          <Text style={{ color: "#fff" }}>
+          <Ionicons
+            name={isCheckedIn ? "log-out-outline" : "log-in-outline"}
+            size={18}
+            color="#fff"
+          />
+          <Text style={styles.fabText}>
             {checkInLoading
               ? "Checking IN..."
               : checkOutLoading
@@ -466,82 +390,48 @@ export default function Dashboard() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    padding: 15,
-  },
-  row: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  section: {
-    marginTop: 20,
-    fontWeight: "bold",
-    fontSize: 16,
-  },
-  filterRow: {
-    flexDirection: "row",
-    gap: 10,
-    marginTop: 12,
-    marginBottom: 8,
-  },
-  filterPill: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 999,
-    backgroundColor: "#eef2ff",
-  },
-  filterPillActive: {
-    backgroundColor: "#2563eb",
-  },
-  filterPillText: {
-    color: "#1f2937",
-    fontWeight: "600",
-  },
-  filterPillTextActive: {
-    color: "#fff",
-  },
-  filterControls: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    marginBottom: 10,
-  },
-  filterLabel: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#374151",
-    marginBottom: 6,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: "#d1d5db",
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderRadius: 10,
-    backgroundColor: "#fff",
-  },
-  dropdown: {
-    borderWidth: 1,
-    borderColor: "#d1d5db",
-    paddingHorizontal: 10,
-    borderRadius: 10,
-    height: 44,
-    backgroundColor: "#fff",
-  },
-  fab: {
-    position: "absolute",
-    bottom: 20,
-    alignSelf: "center",
-    backgroundColor: "#007bff",
-    padding: 15,
-    borderRadius: 30,
-  },
-  emptyContainer: {
-    alignItems: "center",
-    marginTop: 40,
-  },
-  emptyIcon: {
-    fontSize: 40,
-    marginBottom: 10,
-  },
-});
+const getStyles = (colors) =>
+  StyleSheet.create({
+    container: {
+      padding: spacing.lg,
+      paddingBottom: spacing.xxxl + 56, // clears the floating FAB
+    },
+    row: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+    },
+    section: {
+      ...typography.h2,
+      marginTop: spacing.xl,
+      color: colors.text,
+    },
+    fab: {
+      position: "absolute",
+      bottom: spacing.xl,
+      alignSelf: "center",
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.sm,
+      backgroundColor: colors.primary,
+      paddingVertical: spacing.md,
+      paddingHorizontal: spacing.xl,
+      borderRadius: 30,
+      ...shadow(6),
+    },
+    fabDisabled: {
+      opacity: 0.7,
+    },
+    fabText: {
+      ...typography.bodyBold,
+      color: "#fff",
+    },
+    emptyContainer: {
+      alignItems: "center",
+      marginTop: spacing.xxxl,
+    },
+    emptyText: {
+      ...typography.body,
+      marginTop: spacing.sm,
+      color: colors.textMuted,
+    },
+  });

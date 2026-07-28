@@ -24,7 +24,8 @@ const TransferStockForm = ({
       quantity: editData?.quantity?.toString() || '',
       unit: editData?.unit || 'kg',
       description: editData?.description || ''
-    }
+    },
+    mode: 'onChange'
   });
 
   const [loading, setLoading] = useState(false);
@@ -210,7 +211,7 @@ useEffect(() => {
               placeholder="Enter any additional notes"
               disabled={isLoading}
               rows={3}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 disabled:bg-gray-100 disabled:cursor-not-allowed"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 disabled:bg-gray-100 disabled:cursor-not-allowed"
             />
           </div>
         )}

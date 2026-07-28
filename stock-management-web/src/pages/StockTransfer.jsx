@@ -10,7 +10,8 @@ import DeleteModal from '../components/modal/DeleteModal';
 import { getStockTransferColumns } from '../components/Dashboard/stockTransfer/columns/stockTransferColumns';
 import stockTransferAPI from '../../services/stockTransfer';
 import userAPI from '../../services/user';
-import { FaExchangeAlt, FaFilter } from 'react-icons/fa';
+import { triggerBlobDownload, parseBlobError } from '../utils/downloadFile';
+import { FaExchangeAlt, FaFilter, FaDownload } from 'react-icons/fa';
 import Select from '../components/Select';
 
 const StockTransfer = () => {
@@ -33,7 +34,26 @@ const StockTransfer = () => {
   const [coreTeamMembers, setCoreTeamMembers] = useState([]);
   const [filterUserId, setFilterUserId] = useState('');
 //   const [allTransfers, setAllTransfers] = useState([]); // Store all transfers for quantity calculation
+  const [exporting, setExporting] = useState(false);
   const pageSize = 10;
+
+  const handleExportCsv = async () => {
+    setExporting(true);
+    try {
+      const params = filterUserId ? { toUserId: filterUserId } : {};
+      const response = await stockTransferAPI.exportCsv(params);
+      if (response.ok) {
+        triggerBlobDownload(response.data, `stock-transfers-export-${Date.now()}.csv`);
+      } else {
+        const message = await parseBlobError(response.data, 'Failed to export stock transfers');
+        dispatch(showSnackbar({ message, severity: 'error' }));
+      }
+    } catch (error) {
+      dispatch(showSnackbar({ message: error.message || 'Failed to export stock transfers', severity: 'error' }));
+    } finally {
+      setExporting(false);
+    }
+  };
 
   useEffect(() => {
     if (!isCoreTeam) {
@@ -121,9 +141,24 @@ const StockTransfer = () => {
 
       if (response.ok) {
         setTransferredStockQuantities(response.data.data);
+      } else {
+        dispatch(
+          showSnackbar({
+            message:
+              response.data?.displayMessage ||
+              response.data?.message ||
+              'Failed to fetch transferred stock quantities',
+            severity: 'error'
+          })
+        );
       }
     } catch (error) {
-      console.error('Error fetching stock transfer quantities:', error);
+      dispatch(
+        showSnackbar({
+          message: error.message || 'Failed to fetch transferred stock quantities',
+          severity: 'error'
+        })
+      );
     }
   };
 
@@ -239,10 +274,21 @@ const StockTransfer = () => {
             </p>
           </div>
           {!isCoreTeam && (
-            <Button onClick={handleTransfer} className="flex items-center space-x-2">
-              <FaExchangeAlt className="w-4 h-4" />
-              <span>Transfer Stock</span>
-            </Button>
+            <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                onClick={handleExportCsv}
+                loading={exporting}
+                className="flex items-center space-x-2"
+              >
+                <FaDownload className="w-4 h-4" />
+                <span>Export CSV</span>
+              </Button>
+              <Button onClick={handleTransfer} className="flex items-center space-x-2">
+                <FaExchangeAlt className="w-4 h-4" />
+                <span>Transfer Stock</span>
+              </Button>
+            </div>
           )}
         </div>
 

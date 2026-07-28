@@ -3,6 +3,10 @@ import Sale from '../models/sale.model.js';
 import Customer from '../models/customer.model.js';
 import ItemProduced from '../models/itemProduced.model.js';
 import { getPaginationParams, formatPaginatedResponse } from '../utils/pagination.js';
+import { logActivity } from '../utils/auditLog.js';
+import { toCsv, sendCsv } from '../utils/csv.js';
+
+const EXPORT_ROW_LIMIT = 10000;
 
 const getAvailableQuantityByItem = async (itemName, excludeSaleId = null) => {
   const producedAgg = await ItemProduced.aggregate([
@@ -118,6 +122,15 @@ export const createSale = async (req, res) => {
       .populate('customerId', 'name companyName phone')
       .populate('soldBy', 'name email role');
 
+    await logActivity({
+      entityType: 'sale',
+      entityId: sale._id,
+      action: 'create',
+      performedBy: soldBy,
+      description: `Sold ${sale.quantity} ${sale.itemName} to ${customer.name}`,
+      after: sale.toObject()
+    });
+
     res.success('Sale created successfully', populated, 'Sale recorded successfully', 201);
   } catch (error) {
     res.error(
@@ -176,6 +189,49 @@ export const getAllSales = async (req, res) => {
   }
 };
 
+export const exportSalesCsv = async (req, res) => {
+  try {
+    const { customerId, itemName, startDate, endDate } = req.query;
+
+    const query = { status: 'completed' };
+    if (customerId) query.customerId = customerId;
+    if (itemName) query.itemName = itemName;
+    if (startDate || endDate) {
+      query.saleDate = {};
+      if (startDate) query.saleDate.$gte = new Date(startDate);
+      if (endDate) query.saleDate.$lte = new Date(endDate);
+    }
+
+    const sales = await Sale.find(query)
+      .populate('customerId', 'name companyName phone')
+      .populate('soldBy', 'name email')
+      .sort({ saleDate: -1 })
+      .limit(EXPORT_ROW_LIMIT);
+
+    const csv = toCsv(sales, [
+      { header: 'Customer', value: (r) => r.customerId?.name || '' },
+      { header: 'Company', value: (r) => r.customerId?.companyName || '' },
+      { header: 'Item', value: (r) => r.itemName },
+      { header: 'Quantity', value: (r) => r.quantity },
+      { header: 'Price/Piece', value: (r) => r.pricePerPiece ?? '' },
+      { header: 'Total Amount', value: (r) => r.totalAmount ?? '' },
+      { header: 'Sold By', value: (r) => r.soldBy?.name || '' },
+      { header: 'Sale Date', value: (r) => r.saleDate?.toISOString() || '' },
+      { header: 'Notes', value: (r) => r.notes || '' }
+    ]);
+
+    sendCsv(res, `sales-export-${Date.now()}.csv`, csv);
+  } catch (error) {
+    console.error('Error exporting sales CSV:', error);
+    res.error(
+      error.message || 'Failed to export sales',
+      error,
+      'An error occurred while exporting sales',
+      500
+    );
+  }
+};
+
 export const getSaleById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -207,6 +263,7 @@ export const updateSale = async (req, res) => {
     if (!existing) {
       return res.error('Sale not found', null, 'The requested sale does not exist', 404);
     }
+    const before = existing.toObject();
 
     const nextItemName = itemName ? String(itemName).trim() : existing.itemName;
     const nextQty = quantity !== undefined && quantity !== null ? Number(quantity) : existing.quantity;
@@ -251,6 +308,16 @@ export const updateSale = async (req, res) => {
       .populate('customerId', 'name companyName phone')
       .populate('soldBy', 'name email role');
 
+    await logActivity({
+      entityType: 'sale',
+      entityId: updated._id,
+      action: 'update',
+      performedBy: req.userId,
+      description: `Updated sale #${updated._id}`,
+      before,
+      after: updated.toObject()
+    });
+
     res.success('Sale updated successfully', updated, 'Sale has been updated successfully', 200);
   } catch (error) {
     res.error(
@@ -269,6 +336,16 @@ export const deleteSale = async (req, res) => {
     if (!deleted) {
       return res.error('Sale not found', null, 'The requested sale does not exist', 404);
     }
+
+    await logActivity({
+      entityType: 'sale',
+      entityId: deleted._id,
+      action: 'delete',
+      performedBy: req.userId,
+      description: `Deleted sale #${deleted._id}`,
+      before: deleted.toObject()
+    });
+
     res.success('Sale deleted successfully', deleted, 'Sale has been deleted successfully', 200);
   } catch (error) {
     res.error(

@@ -43,7 +43,6 @@ const addRecord = async (payload) => {
     requestBody: { values },
   });
   return "Row added";
-  console.log("✅ Row added!");
 };
 
 // 2️⃣ Read all data

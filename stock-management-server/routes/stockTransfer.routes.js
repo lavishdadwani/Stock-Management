@@ -6,7 +6,8 @@ import {
   getStockTransferById,
   updateStockTransfer,
   deleteStockTransfer,
-  getStockTransferQuantities
+  getStockTransferQuantities,
+  exportStockTransfersCsv
 } from '../controllers/stockTransferController.js';
 import { Auth, authorize } from '../middleware/auth.js';
 
@@ -29,6 +30,9 @@ router.put('/update/:id', Auth, authorize('manager', 'owner', 'super_admin'), up
 
 // Delete stock transfer - only managers and owners
 router.delete('/delete/:id', Auth, authorize('manager', 'owner', 'super_admin'), deleteStockTransfer);
+
+// Export stock transfers as CSV - only managers and owners
+router.get('/export-csv', Auth, authorize('manager', 'owner', 'super_admin'), exportStockTransfersCsv);
 
 // Get stock transfer by ID
 router.get('/:id', Auth, getStockTransferById);

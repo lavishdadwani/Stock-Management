@@ -9,6 +9,8 @@ import Button from '../components/Button';
 import Input from '../components/Input';
 import Card from '../components/Card';
 import Navbar from '../components/Navbar';
+import Badge from '../components/Badge';
+import { getRoleTone } from '../utils/badgeTones';
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -163,15 +165,9 @@ const Profile = () => {
               
               <div className="mt-4 space-y-2">
                 <div className="flex items-center justify-center space-x-2">
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                    user.role === 'owner' 
-                      ? 'bg-purple-100 text-purple-800'
-                      : user.role === 'core_team'
-                      ? 'bg-green-100 text-green-800'
-                      : 'bg-blue-100 text-blue-800'
-                  }`}>
+                  <Badge tone={getRoleTone(user.role)} className="capitalize">
                     {user.role}
-                  </span>
+                  </Badge>
                 </div>
                 
                 {!user.isEmailVerified && (
@@ -251,7 +247,7 @@ const Profile = () => {
                   value={user.email}
                   disabled
                   placeholder="Email cannot be changed"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-900 cursor-not-allowed"
                 />
               </div>
 

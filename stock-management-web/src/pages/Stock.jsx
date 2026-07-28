@@ -25,7 +25,7 @@ const Stock = () => {
   const [customers, setCustomers] = useState([]);
   const [purchaseLoading, setPurchaseLoading] = useState(false);
 
-  const canRecordPurchase = user?.role === 'manager' || user?.role === 'owner';
+  const canRecordPurchase = ['manager', 'owner', 'super_admin'].includes(user?.role);
 
   const fetchProducedItems = async () => {
     setLoading(true);

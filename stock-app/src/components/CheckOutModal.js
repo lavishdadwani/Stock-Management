@@ -6,15 +6,26 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useEffect, useState } from "react";
+import { Ionicons } from "@expo/vector-icons";
 import dashboardApi from "../api/dashboardApi";
+import producibleItemsApi from "../api/producibleItemsApi";
 import { Dropdown } from "react-native-element-dropdown";
-import { PRODUCIBLE_ITEMS } from "../data/ProducibleItems";
+import { spacing } from "../constants/spacing";
+import { typography } from "../constants/typography";
+import { useTheme } from "../context/ThemeContext";
 
 
 export default function CheckOutModal({ visible, onClose, onSubmit }) {
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
   const [loading, setLoading] = useState(false);
+  const [producibleItems, setProducibleItems] = useState([]);
 
   const [form, setForm] = useState({
     wireUsedType: "",
@@ -28,8 +39,42 @@ export default function CheckOutModal({ visible, onClose, onSubmit }) {
 
   const [error, setError] = useState("");
 
+  const dropdownThemeProps = {
+    style: styles.dropdown,
+    containerStyle: { backgroundColor: colors.surface, borderColor: colors.border },
+    placeholderStyle: { color: colors.textMuted },
+    selectedTextStyle: { color: colors.text },
+    itemTextStyle: { color: colors.text },
+    itemContainerStyle: { backgroundColor: colors.surface },
+    activeColor: colors.filterPillBackground,
+  };
+
+  // 🎯 FETCH PRODUCIBLE ITEM CATALOG (admin-managed)
+  useEffect(() => {
+    if (!visible) return;
+
+    let cancelled = false;
+    (async () => {
+      const res = await producibleItemsApi.getProducibleItems();
+      if (!cancelled && res.ok) {
+        const items = (res.data?.data || []).map((item) => ({
+          value: item.itemName,
+          label: item.itemName,
+          itemName: item.itemName,
+          wireUsedType: item.wireUsedType,
+          wireKgPerPiece: item.wireKgPerPiece,
+        }));
+        setProducibleItems(items);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [visible]);
+
   // 🎯 FILTER ITEMS BASED ON WIRE
-  const producibleItemsForWire = PRODUCIBLE_ITEMS.filter(
+  const producibleItemsForWire = producibleItems.filter(
     (i) => i.wireUsedType === form.wireUsedType
   );
 
@@ -67,22 +112,8 @@ export default function CheckOutModal({ visible, onClose, onSubmit }) {
 
   // 🎯 AUTO CALCULATE WIRE USED
   useEffect(() => {
-    const selected = PRODUCIBLE_ITEMS.find((i) => i.value === form.itemName);
-
-    if (!selected) return;
-
-    const qty = Number(form.quantity) || 0;
-    const used = qty * selected.wireKgPerPiece;
-
-    setForm((prev) => ({
-      ...prev,
-      wireUsedQuantity: Number(used.toFixed(2)),
-    }));
-  }, [form.quantity, form.itemName]);
-
-  useEffect(() => {
     const selected = getSelectedProducedItem(form.itemName);
-  
+
     if (!selected) {
       if (form.wireUsedQuantity !== 0) {
         setForm((prev) => ({
@@ -92,12 +123,12 @@ export default function CheckOutModal({ visible, onClose, onSubmit }) {
       }
       return;
     }
-  
+
     const pieces = Number(form.quantity) || 0;
     const nextUsed = Number(
       (pieces * selected.wireKgPerPiece).toFixed(2)
     );
-  
+
     if (form.wireUsedQuantity !== nextUsed) {
       setForm((prev) => ({
         ...prev,
@@ -109,7 +140,7 @@ export default function CheckOutModal({ visible, onClose, onSubmit }) {
   useEffect(() => {
     const used = Number(form.wireUsedQuantity) || 0;
     const available = Number(form.wireAvailableQuantity) || 0;
-  
+
     if (used > available) {
       setError("Wire used quantity cannot be greater than available stock");
     } else {
@@ -162,149 +193,176 @@ export default function CheckOutModal({ visible, onClose, onSubmit }) {
   };
 
   return (
-    <Modal visible={visible} animationType="slide">
-      <View style={styles.container}>
-        {/* HEADER */}
-        <View style={styles.header}>
-          <Text style={styles.title}>Check OUT</Text>
-          <TouchableOpacity onPress={onClose}>
-            <Text style={styles.close}>✕</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Wire Type */}
-        <Text>Wire Used Type *</Text>
-
-        <Dropdown
-          style={styles.dropdown}
-          data={[
-            { label: "Aluminium", value: "aluminium" },
-            { label: "Copper", value: "copper" },
-          ]}
-          labelField="label"
-          valueField="value"
-          placeholder="Select Wire Type"
-          value={form.wireUsedType}
-          onChange={(item) =>
-            setForm({
-              ...form,
-              wireUsedType: item.value,
-              itemName: "", // reset item
-              wireUsedQuantity: 0,
-            })
-          }
-        />
-
-        {/* Available */}
-        <Text>Available (kg)</Text>
-        <TextInput
-          style={styles.input}
-          value={String(form.wireAvailableQuantity)}
-          editable={false}
-        />
-
-        {/* Used */}
-        <Text>Used (kg)</Text>
-        <TextInput
-          style={styles.input}
-          value={String(form.wireUsedQuantity)}
-          editable={false}
-        />
-
-        {/* Item */}
-        <Text>Item Produced *</Text>
-
-        <Dropdown
-          style={styles.dropdown}
-          data={producibleItemsForWire.map((i) => ({
-            label: i.label,
-            value: i.value,
-          }))}
-          labelField="label"
-          valueField="value"
-          placeholder="Select Item"
-          value={form.itemName}
-          onChange={(item) =>
-            setForm({
-              ...form,
-              itemName: item.value,
-            })
-          }
-          disable={!form.wireUsedType}
-        />
-
-        {/* Quantity */}
-        <Text>Quantity *</Text>
-        <TextInput
-          style={styles.input}
-          keyboardType="numeric"
-          value={form.quantity}
-          onChangeText={(text) => setForm({ ...form, quantity: text })}
-        />
-
-        {/* Scrap */}
-        <Text>Scrap (g) (Optional)</Text>
-        <TextInput
-          style={styles.input}
-          onChangeText={(text) => setForm({ ...form, scrap: text })}
-        />
-
-        {/* Description */}
-        <Text>Description (Optional)</Text>
-        <TextInput
-          style={styles.input}
-          onChangeText={(text) => setForm({ ...form, description: text })}
-        />
-
-        {/* ERROR */}
-        {error ? <Text style={styles.error}>{error}</Text> : null}
-
-        {/* BUTTON */}
-        <TouchableOpacity
-          style={styles.btn}
-          onPress={handleSubmit}
-          disabled={loading}
+    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+      <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
+        <KeyboardAvoidingView
+          style={styles.container}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={{ color: "#fff" }}>Check OUT</Text>
-          )}
-        </TouchableOpacity>
-      </View>
+          {/* HEADER */}
+          <View style={styles.header}>
+            <Text style={styles.title}>Check OUT</Text>
+            <TouchableOpacity onPress={onClose} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+              <Ionicons name="close" size={24} color={colors.text} />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+          >
+            {/* Wire Type */}
+            <Text style={styles.label}>Wire Used Type *</Text>
+
+            <Dropdown
+              {...dropdownThemeProps}
+              data={[
+                { label: "Aluminium", value: "aluminium" },
+                { label: "Copper", value: "copper" },
+              ]}
+              labelField="label"
+              valueField="value"
+              placeholder="Select Wire Type"
+              value={form.wireUsedType}
+              onChange={(item) =>
+                setForm({
+                  ...form,
+                  wireUsedType: item.value,
+                  itemName: "", // reset item
+                  wireUsedQuantity: 0,
+                })
+              }
+            />
+
+            {/* Available */}
+            <Text style={styles.label}>Available (kg)</Text>
+            <TextInput
+              style={styles.input}
+              value={String(form.wireAvailableQuantity)}
+              editable={false}
+            />
+
+            {/* Used */}
+            <Text style={styles.label}>Used (kg)</Text>
+            <TextInput
+              style={styles.input}
+              value={String(form.wireUsedQuantity)}
+              editable={false}
+            />
+
+            {/* Item */}
+            <Text style={styles.label}>Item Produced *</Text>
+
+            <Dropdown
+              {...dropdownThemeProps}
+              data={producibleItemsForWire.map((i) => ({
+                label: i.label,
+                value: i.value,
+              }))}
+              labelField="label"
+              valueField="value"
+              placeholder="Select Item"
+              value={form.itemName}
+              onChange={(item) =>
+                setForm({
+                  ...form,
+                  itemName: item.value,
+                })
+              }
+              disable={!form.wireUsedType}
+            />
+
+            {/* Quantity */}
+            <Text style={styles.label}>Quantity *</Text>
+            <TextInput
+              style={styles.input}
+              keyboardType="numeric"
+              value={form.quantity}
+              onChangeText={(text) => setForm({ ...form, quantity: text })}
+              placeholderTextColor={colors.textMuted}
+            />
+
+            {/* Scrap */}
+            <Text style={styles.label}>Scrap (g) (Optional)</Text>
+            <TextInput
+              style={styles.input}
+              keyboardType="numeric"
+              onChangeText={(text) => setForm({ ...form, scrap: text })}
+              placeholderTextColor={colors.textMuted}
+            />
+
+            {/* Description */}
+            <Text style={styles.label}>Description (Optional)</Text>
+            <TextInput
+              style={styles.input}
+              onChangeText={(text) => setForm({ ...form, description: text })}
+              placeholderTextColor={colors.textMuted}
+            />
+
+            {/* ERROR */}
+            {error ? <Text style={styles.error}>{error}</Text> : null}
+
+            {/* BUTTON */}
+            <TouchableOpacity
+              style={[styles.btn, loading && styles.btnDisabled]}
+              onPress={handleSubmit}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={{ color: "#fff" }}>Check OUT</Text>
+              )}
+            </TouchableOpacity>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
     </Modal>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20 },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 20,
-  },
-  title: { fontSize: 20, fontWeight: "bold" },
-  close: { fontSize: 22 },
-  input: {
-    borderWidth: 1,
-    padding: 10,
-    marginBottom: 10,
-    borderRadius: 5,
-  },
-  btn: {
-    backgroundColor: "red",
-    padding: 15,
-    alignItems: "center",
-    borderRadius: 5,
-  },
-  error: {
-    color: "red",
-    marginBottom: 10,
-  },
-  dropdown: {
-    borderWidth: 1,
-    borderRadius: 5,
-    padding: 10,
-    marginBottom: 10,
-  },
-});
+const getStyles = (colors) =>
+  StyleSheet.create({
+    safeArea: { flex: 1, backgroundColor: colors.background },
+    container: { flex: 1, paddingHorizontal: spacing.xl, backgroundColor: colors.background },
+    scrollContent: { paddingBottom: spacing.xl },
+    header: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingVertical: spacing.lg,
+    },
+    title: { ...typography.h1, fontSize: 20, color: colors.text },
+    label: { ...typography.body, color: colors.textSecondary, marginBottom: spacing.xs },
+    input: {
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: spacing.md,
+      marginBottom: spacing.md,
+      borderRadius: 10,
+      backgroundColor: colors.surface,
+      color: colors.text,
+    },
+    btn: {
+      backgroundColor: colors.danger,
+      paddingVertical: spacing.lg,
+      alignItems: "center",
+      borderRadius: 10,
+    },
+    btnDisabled: {
+      opacity: 0.6,
+    },
+    error: {
+      ...typography.body,
+      color: colors.danger,
+      marginBottom: spacing.md,
+    },
+    dropdown: {
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 10,
+      padding: spacing.md,
+      marginBottom: spacing.md,
+      backgroundColor: colors.surface,
+    },
+  });

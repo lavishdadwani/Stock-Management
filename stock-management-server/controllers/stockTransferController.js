@@ -4,6 +4,12 @@ import Stock from '../models/stock.model.js';
 import User from '../models/user.model.js';
 import { validateStockTransferData } from '../utils/validation.js';
 import { getPaginationParams, formatPaginatedResponse } from '../utils/pagination.js';
+import { evaluateStockLevel } from '../utils/stockAlerts.js';
+import withStockLock from '../utils/withStockLock.js';
+import { logActivity } from '../utils/auditLog.js';
+import { toCsv, sendCsv } from '../utils/csv.js';
+
+const EXPORT_ROW_LIMIT = 10000;
 
 // Helper function to convert quantity to KG
 const convertToKg = (quantity, unit) => {
@@ -71,70 +77,83 @@ export const transferStock = async (req, res) => {
 
     const quantityInKg = convertToKg(quantity, unit);
 
-    // if stock is available, then transfer the stock
-    const stockAggregation = await Stock.aggregate([
-      {
-        $match: {
-          itemName: itemName
-        }
-      },
-      {
-        $group: {
-          _id: '$itemName',
-          totalQuantity: { $sum: '$quantity' }
-        }
+    // Availability check + deduction run inside a per-material transaction so
+    // two concurrent transfers of the same material can't both pass the
+    // check against a stale total (see utils/withStockLock.js).
+    const result = await withStockLock(itemName, async (session) => {
+      const stockAggregation = await Stock.aggregate([
+        { $match: { itemName } },
+        { $group: { _id: '$itemName', totalQuantity: { $sum: '$quantity' } } }
+      ]).session(session);
+
+      const availableStock = stockAggregation.length > 0 ? stockAggregation[0].totalQuantity : 0;
+
+      if (availableStock < quantityInKg) {
+        return { insufficientStock: true, availableStock };
       }
-    ]);
 
-    const availableStock = stockAggregation.length > 0 ? stockAggregation[0].totalQuantity : 0;
+      const stockTransfer = new StockTransfer({
+        fromUserId,
+        toUserId,
+        itemName,
+        quantity: quantityInKg,
+        unit: 'kg',
+        transferDate: new Date(),
+        description: description || null,
+        status: 'completed',
+        entryType: 'transfer_in'
+      });
 
-    if (availableStock < quantityInKg) {
+      // Deduct stock from inventory by creating a negative stock entry
+      const stockEntry = new Stock({
+        itemName,
+        quantity: -quantityInKg,
+        unit: 'kg',
+        stockType: 'raw',
+        category: 'wire',
+        addedBy: fromUserId,
+        description: `Transferred to ${toUser.name} (${toUser.email}) - ${description || 'Stock transfer'}`
+      });
+
+      // Save stock entry first to get its ID
+      await stockEntry.save({ session });
+
+      // Link stock entry to transfer
+      stockTransfer.stockEntryId = stockEntry._id;
+      await stockTransfer.save({ session });
+
+      return { stockTransfer };
+    });
+
+    if (result.insufficientStock) {
       return res.error(
         'Insufficient stock',
         {
           required: quantityInKg,
-          available: availableStock,
+          available: result.availableStock,
           itemName: itemName
         },
-        `Insufficient ${itemName} available. Required: ${quantityInKg} kg, Available: ${availableStock} kg`,
+        `Insufficient ${itemName} available. Required: ${quantityInKg} kg, Available: ${result.availableStock} kg`,
         400
       );
     }
 
-    const stockTransfer = new StockTransfer({
-      fromUserId,
-      toUserId,
-      itemName,
-      quantity: quantityInKg,
-      unit: 'kg',
-      transferDate: new Date(),
-      description: description || null,
-      status: 'completed',
-      entryType: 'transfer_in'
-    });
+    await evaluateStockLevel(itemName);
 
-    // Deduct stock from inventory by creating a negative stock entry
-    const stockEntry = new Stock({
-      itemName,
-      quantity: -quantityInKg, 
-      unit: 'kg',
-      stockType: 'raw',
-      category: 'wire',
-      addedBy: fromUserId,
-      description: `Transferred to ${toUser.name} (${toUser.email}) - ${description || 'Stock transfer'}`
-    });
-
-    // Save stock entry first to get its ID
-    await stockEntry.save();
-    
-    // Link stock entry to transfer
-    stockTransfer.stockEntryId = stockEntry._id;
-    await stockTransfer.save();
-
+    const { stockTransfer } = result;
     await stockTransfer.populate([
       { path: 'fromUserId', select: 'name email role' },
       { path: 'toUserId', select: 'name email role' }
     ]);
+
+    await logActivity({
+      entityType: 'stockTransfer',
+      entityId: stockTransfer._id,
+      action: 'create',
+      performedBy: fromUserId,
+      description: `Transferred ${quantityInKg}kg of ${itemName} to ${toUser.name}`,
+      after: stockTransfer.toObject()
+    });
 
     res.success(
       'Stock transferred successfully',
@@ -209,6 +228,49 @@ export const getAllStockTransfers = async (req, res) => {
       error.message || 'Failed to fetch stock transfers',
       error,
       'An error occurred while fetching stock transfers',
+      500
+    );
+  }
+};
+
+// Export stock transfers as CSV
+export const exportStockTransfersCsv = async (req, res) => {
+  try {
+    const { fromUserId, toUserId, itemName, startDate, endDate } = req.query;
+
+    const query = {};
+    if (fromUserId) query.fromUserId = fromUserId;
+    if (toUserId) query.toUserId = toUserId;
+    if (itemName) query.itemName = itemName;
+    if (startDate || endDate) {
+      query.transferDate = {};
+      if (startDate) query.transferDate.$gte = new Date(startDate);
+      if (endDate) query.transferDate.$lte = new Date(endDate);
+    }
+
+    const transfers = await StockTransfer.find(query)
+      .populate('fromUserId', 'name email')
+      .populate('toUserId', 'name email')
+      .sort({ transferDate: -1 })
+      .limit(EXPORT_ROW_LIMIT);
+
+    const csv = toCsv(transfers, [
+      { header: 'Item', value: (r) => r.itemName },
+      { header: 'Quantity (kg)', value: (r) => r.quantity },
+      { header: 'From', value: (r) => r.fromUserId?.name || '' },
+      { header: 'To', value: (r) => r.toUserId?.name || '' },
+      { header: 'Status', value: (r) => r.status },
+      { header: 'Transfer Date', value: (r) => r.transferDate?.toISOString() || '' },
+      { header: 'Description', value: (r) => r.description || '' }
+    ]);
+
+    sendCsv(res, `stock-transfers-export-${Date.now()}.csv`, csv);
+  } catch (error) {
+    console.error('Error exporting stock transfers CSV:', error);
+    res.error(
+      error.message || 'Failed to export stock transfers',
+      error,
+      'An error occurred while exporting stock transfers',
       500
     );
   }
@@ -329,6 +391,8 @@ export const updateStockTransfer = async (req, res) => {
       );
     }
 
+    const before = existingTransfer.toObject();
+
     // Verify that user is a manager or owner
     const user = await User.findById(userId);
     if (!user || (user.role !== 'manager' && user.role !== 'owner')) {
@@ -378,43 +442,55 @@ export const updateStockTransfer = async (req, res) => {
 
       // Calculate the difference
       const quantityDifference = newQuantityInKg - oldQuantityInKg;
+      const needsAvailabilityCheck = quantityDifference > 0 || newItemName !== existingTransfer.itemName;
 
-      // If quantity increased or itemName changed, check availability
-      if (quantityDifference > 0 || newItemName !== existingTransfer.itemName) {
-        const stockAggregation = await Stock.aggregate([
-          {
-            $match: {
-              itemName: newItemName
-            }
-          },
-          {
-            $group: {
-              _id: '$itemName',
-              totalQuantity: { $sum: '$quantity' }
-            }
+      // Availability check + stock entry update run inside a per-material
+      // transaction, same as transferStock, to avoid racing concurrent edits.
+      const lockResult = await withStockLock(newItemName, async (session) => {
+        if (needsAvailabilityCheck) {
+          const stockAggregation = await Stock.aggregate([
+            { $match: { itemName: newItemName } },
+            { $group: { _id: '$itemName', totalQuantity: { $sum: '$quantity' } } }
+          ]).session(session);
+
+          const availableStock = stockAggregation.length > 0 ? stockAggregation[0].totalQuantity : 0;
+
+          if (availableStock < quantityDifference) {
+            return { insufficientStock: true, availableStock };
           }
-        ]);
-
-        const availableStock = stockAggregation.length > 0 ? stockAggregation[0].totalQuantity : 0;
-
-        if (availableStock < quantityDifference) {
-          return res.error(
-            'Insufficient stock',
-            {
-              required: quantityDifference,
-              available: availableStock,
-              itemName: newItemName
-            },
-            `Insufficient ${newItemName} available. Required: ${quantityDifference} kg, Available: ${availableStock} kg`,
-            400
-          );
         }
+
+        // Get the linked stock entry and update it directly
+        const stockEntry = await Stock.findById(existingTransfer.stockEntryId).session(session);
+
+        if (!stockEntry) {
+          return { notFound: true };
+        }
+
+        const previousItemName = existingTransfer.itemName;
+
+        stockEntry.itemName = newItemName;
+        stockEntry.quantity = -newQuantityInKg; // always keep it negative to add back the stock
+        stockEntry.description = `Updated transfer #${existingTransfer._id} - ${itemNameChanged ? `Item changed to ${newItemName}, ` : ''}Quantity changed from ${oldQuantityInKg}kg to ${newQuantityInKg}kg`;
+        await stockEntry.save({ session });
+
+        return { previousItemName };
+      });
+
+      if (lockResult.insufficientStock) {
+        return res.error(
+          'Insufficient stock',
+          {
+            required: quantityDifference,
+            available: lockResult.availableStock,
+            itemName: newItemName
+          },
+          `Insufficient ${newItemName} available. Required: ${quantityDifference} kg, Available: ${lockResult.availableStock} kg`,
+          400
+        );
       }
 
-      // Get the linked stock entry and update it directly
-      const stockEntry = await Stock.findById(existingTransfer.stockEntryId);
-      
-      if (!stockEntry) {
+      if (lockResult.notFound) {
         return res.error(
           'Stock entry not found',
           null,
@@ -422,11 +498,11 @@ export const updateStockTransfer = async (req, res) => {
           404
         );
       }
-      
-      stockEntry.itemName = newItemName;
-      stockEntry.quantity = -newQuantityInKg; // always keep it negative to add back the stock
-      stockEntry.description = `Updated transfer #${existingTransfer._id} - ${itemNameChanged ? `Item changed to ${newItemName}, ` : ''}Quantity changed from ${oldQuantityInKg}kg to ${newQuantityInKg}kg`;
-      await stockEntry.save();
+
+      await evaluateStockLevel(newItemName);
+      if (itemNameChanged) {
+        await evaluateStockLevel(lockResult.previousItemName);
+      }
     }
 
     // Verify toUserId 
@@ -457,6 +533,16 @@ export const updateStockTransfer = async (req, res) => {
       existingTransfer.description = finalData.description;
 
     await existingTransfer.save();
+
+    await logActivity({
+      entityType: 'stockTransfer',
+      entityId: existingTransfer._id,
+      action: 'update',
+      performedBy: userId,
+      description: `Updated stock transfer #${existingTransfer._id}`,
+      before,
+      after: existingTransfer.toObject()
+    });
 
     res.success(
       'Stock transfer updated successfully',
@@ -504,9 +590,19 @@ export const deleteStockTransfer = async (req, res) => {
     // Get the linked stock entry and delete it directly
     if (existingTransfer.stockEntryId) {
       await Stock.findByIdAndDelete(existingTransfer.stockEntryId);
+      await evaluateStockLevel(existingTransfer.itemName);
     }
 
     await StockTransfer.findByIdAndDelete(id);
+
+    await logActivity({
+      entityType: 'stockTransfer',
+      entityId: existingTransfer._id,
+      action: 'delete',
+      performedBy: userId,
+      description: `Deleted stock transfer #${existingTransfer._id}`,
+      before: existingTransfer.toObject()
+    });
 
     res.success(
       'Stock transfer deleted successfully',

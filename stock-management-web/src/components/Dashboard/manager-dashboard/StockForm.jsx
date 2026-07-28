@@ -12,6 +12,7 @@ const StockForm = ({ onSubmit, onCancel, loading, initialData = null, submitLabe
     reset,
   } = useForm({
     defaultValues: initialData || {},
+    mode: 'onChange',
   });
 
   const handleFormSubmit = (data) => {
@@ -28,7 +29,8 @@ const StockForm = ({ onSubmit, onCancel, loading, initialData = null, submitLabe
         register={register('itemName', {
           required: 'Item name is required',
         })}
-        error={errors.stockType}
+        error={errors.itemName}
+        required
         options={[
           { value: 'aluminium', label: 'Aluminium' },
           { value: 'copper', label: 'Copper' },
@@ -47,6 +49,7 @@ const StockForm = ({ onSubmit, onCancel, loading, initialData = null, submitLabe
             valueAsNumber: true,
           })}
           error={errors.quantity}
+          required
         />
 
         <Select
@@ -55,6 +58,7 @@ const StockForm = ({ onSubmit, onCancel, loading, initialData = null, submitLabe
             required: 'Unit is required',
           })}
           error={errors.unit}
+          required
           options={[
             { value: 'kg', label: 'kg' },
             { value: 'g', label: 'g' },

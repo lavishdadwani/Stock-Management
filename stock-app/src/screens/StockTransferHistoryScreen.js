@@ -1,13 +1,20 @@
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Alert } from "react-native";
+import { View, Text, StyleSheet, ScrollView, Alert } from "react-native";
 import { useEffect, useState } from "react";
-import { Dropdown } from "react-native-element-dropdown";
+import { Ionicons } from "@expo/vector-icons";
 
 import AppLayout from "../components/layout/AppLayout";
+import DateRangeFilter from "../components/filters/DateRangeFilter";
 import stockTransferApi from "../api/stockTransferApi";
 import dashboardApi from "../api/dashboardApi";
 import StockCard from "../components/ui/StockCard";
+import { shadow } from "../constants/shadow";
+import { spacing } from "../constants/spacing";
+import { typography } from "../constants/typography";
+import { useTheme } from "../context/ThemeContext";
 
 export default function StockTransferHistoryScreen() {
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [records, setRecords] = useState([]);
@@ -50,7 +57,7 @@ export default function StockTransferHistoryScreen() {
     }
   };
   const fetchStockTransferQuantities = async () => {
-    try {   
+    try {
       const params = {};
       if (filterMode === "month") {
         params.month = month;
@@ -90,113 +97,47 @@ export default function StockTransferHistoryScreen() {
             <StockCard
               title="Aluminium"
               value={transferredStockQuantities.aluminium?.quantity}
+              unit={transferredStockQuantities.aluminium?.unit}
+              icon="layers-outline"
+              accentColor={colors.primary}
             />
             <StockCard
               title="Copper"
               value={transferredStockQuantities.copper?.quantity}
+              unit={transferredStockQuantities.copper?.unit}
+              icon="flash-outline"
+              accentColor={colors.warning}
             />
             <StockCard
               title="Scrap"
               value={transferredStockQuantities.scrap?.quantity}
+              unit={transferredStockQuantities.scrap?.unit}
+              icon="trash-outline"
+              accentColor={colors.textMuted}
             />
           </View>
 
-        <View style={styles.filterRow}>
-          <TouchableOpacity
-            style={[styles.filterPill, filterMode === "month" && styles.filterPillActive]}
-            onPress={() => setFilterMode("month")}
-          >
-            <Text style={[styles.filterPillText, filterMode === "month" && styles.filterPillTextActive]}>
-              Monthly
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.filterPill, filterMode === "range" && styles.filterPillActive]}
-            onPress={() => setFilterMode("range")}
-          >
-            <Text style={[styles.filterPillText, filterMode === "range" && styles.filterPillTextActive]}>
-              Date range
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {filterMode === "month" ? (
-          <View style={styles.filterControls}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.label}>Month</Text>
-              <Dropdown
-                style={styles.dropdown}
-                data={[
-                  { label: "Jan", value: "1" },
-                  { label: "Feb", value: "2" },
-                  { label: "Mar", value: "3" },
-                  { label: "Apr", value: "4" },
-                  { label: "May", value: "5" },
-                  { label: "Jun", value: "6" },
-                  { label: "Jul", value: "7" },
-                  { label: "Aug", value: "8" },
-                  { label: "Sep", value: "9" },
-                  { label: "Oct", value: "10" },
-                  { label: "Nov", value: "11" },
-                  { label: "Dec", value: "12" },
-                ]}
-                labelField="label"
-                valueField="value"
-                value={month}
-                placeholder="Select month"
-                onChange={(item) => setMonth(item.value)}
-              />
-            </View>
-            <View style={{ width: 12 }} />
-            <View style={{ width: 120 }}>
-              <Text style={styles.label}>Year</Text>
-              <Dropdown
-                  style={styles.dropdown}
-                  data={[
-                    { label: "2025", value: "2025" },
-                    { label: "2026", value: "2026" },
-                    { label: "2027", value: "2027" },
-                  ]}
-                  labelField="label"
-                  valueField="value"
-                  value={year}
-                  placeholder="Select year"
-                  onChange={(item) => setYear(item.value)}
-                />
-            </View>
-          </View>
-        ) : (
-          <View style={styles.filterControls}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.label}>Start date</Text>
-              <TextInput
-                style={styles.input}
-                value={startDate}
-                onChangeText={setStartDate}
-                placeholder="YYYY-MM-DD"
-              />
-            </View>
-            <View style={{ width: 12 }} />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.label}>End date</Text>
-              <TextInput
-                style={styles.input}
-                value={endDate}
-                onChangeText={setEndDate}
-                placeholder="YYYY-MM-DD"
-              />
-            </View>
-          </View>
-        )}
+        <DateRangeFilter
+          mode={filterMode}
+          onModeChange={setFilterMode}
+          month={month}
+          onMonthChange={setMonth}
+          year={year}
+          onYearChange={setYear}
+          startDate={startDate}
+          onStartDateChange={setStartDate}
+          endDate={endDate}
+          onEndDateChange={setEndDate}
+        />
 
         {loading ? <Text style={styles.muted}>Loading…</Text> : null}
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
         {!loading && !error && records.length === 0 ? (
-           <View style={styles.emptyContainer}>
-           <Text style={styles.emptyIcon}>📦</Text>
-           <Text style={styles.emptyText}>No transfers found.</Text>
-         </View>
+          <View style={styles.emptyContainer}>
+            <Ionicons name="cube-outline" size={40} color={colors.textMuted} />
+            <Text style={styles.emptyText}>No transfers found.</Text>
+          </View>
         ) : null}
 
         {records.map((t) => (
@@ -214,48 +155,26 @@ export default function StockTransferHistoryScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  row: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  container: { padding: 15 },
-  title: { fontSize: 18, fontWeight: "800",marginBottom: 12 },
-  filterRow: { flexDirection: "row", gap: 10, marginTop: 12, marginBottom: 8 },
-  filterPill: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 999, backgroundColor: "#eef2ff" },
-  filterPillActive: { backgroundColor: "#2563eb" },
-  filterPillText: { color: "#1f2937", fontWeight: "700" },
-  filterPillTextActive: { color: "#fff" },
-  filterControls: { flexDirection: "row", alignItems: "flex-end", marginBottom: 12 },
-  label: { fontSize: 12, fontWeight: "700", color: "#374151", marginBottom: 6 },
-  input: {
-    borderWidth: 1,
-    borderColor: "#d1d5db",
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderRadius: 10,
-    backgroundColor: "#fff",
-  },
-  dropdown: {
-    borderWidth: 1,
-    borderColor: "#d1d5db",
-    paddingHorizontal: 10,
-    borderRadius: 10,
-    height: 44,
-    backgroundColor: "#fff",
-  },
-  card: { padding: 14, backgroundColor: "#fff", borderRadius: 12, marginBottom: 10, elevation: 2 },
-  cardTitle: { fontWeight: "800", marginBottom: 4 },
-  cardLine: { color: "#374151" },
-  muted: { color: "#6b7280" },
-  error: { color: "#b91c1c", fontWeight: "700" },
-  emptyContainer: {
-    alignItems: "center",
-    marginTop: 40,
-  },
-  emptyIcon: {
-    fontSize: 40,
-    marginBottom: 10,
-  },
-});
-
+const getStyles = (colors) =>
+  StyleSheet.create({
+    row: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+    },
+    container: { padding: spacing.lg },
+    title: { ...typography.h2, marginBottom: spacing.md, color: colors.text },
+    card: { padding: spacing.md, backgroundColor: colors.surface, borderRadius: 12, marginBottom: spacing.sm, ...shadow(2) },
+    cardTitle: { ...typography.bodyBold, marginBottom: spacing.xs, color: colors.text },
+    cardLine: { ...typography.body, color: colors.textSecondary },
+    muted: { ...typography.body, color: colors.textMuted },
+    error: { ...typography.bodyBold, color: colors.danger },
+    emptyContainer: {
+      alignItems: "center",
+      marginTop: spacing.xxxl,
+    },
+    emptyText: {
+      ...typography.body,
+      marginTop: spacing.sm,
+      color: colors.textMuted,
+    },
+  });

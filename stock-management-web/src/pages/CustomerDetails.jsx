@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import Layout from '../components/Layout';
 import Card from '../components/Card';
+import Breadcrumbs from '../components/Breadcrumbs';
 import {
   CustomerDetailsHeader,
   CustomerProfileCard,
@@ -111,10 +112,18 @@ const CustomerDetails = () => {
   return (
     <Layout>
       <div className="max-w-7xl mx-auto">
+        <Breadcrumbs
+          items={[
+            { label: 'Customers', to: '/customers' },
+            { label: customer?.name || 'Customer Details' }
+          ]}
+        />
         <CustomerDetailsHeader onBack={() => navigate('/customers')} />
 
         {loadingCustomer ? (
-          <p className="text-gray-600">Loading customer…</p>
+          <Card>
+            <p className="text-gray-600">Loading customer…</p>
+          </Card>
         ) : !customer ? (
           <Card>
             <p className="text-gray-600">Customer not found.</p>

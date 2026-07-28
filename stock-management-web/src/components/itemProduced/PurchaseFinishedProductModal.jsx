@@ -1,10 +1,10 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import Modal from '../modal/Modal';
 import Button from '../Button';
 import Input from '../Input';
 import Select from '../Select';
-import { PRODUCIBLE_ITEMS } from '../../data/producibleItems';
+import producibleItemsAPI from '../../../services/producibleItems';
 
 const PurchaseFinishedProductModal = ({
   isOpen,
@@ -13,6 +13,26 @@ const PurchaseFinishedProductModal = ({
   loading,
   customers = []
 }) => {
+  const [producibleItems, setProducibleItems] = useState([]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const response = await producibleItemsAPI.getActive();
+        if (!cancelled && response.ok) {
+          setProducibleItems(response.data?.data || []);
+        }
+      } catch {
+        if (!cancelled) setProducibleItems([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen]);
+
   const {
     register,
     handleSubmit,
@@ -26,7 +46,8 @@ const PurchaseFinishedProductModal = ({
       productionDate: '',
       pricePerPiece: '',
       description: ''
-    }
+    },
+    mode: 'onChange'
   });
 
   useEffect(() => {
@@ -47,9 +68,9 @@ const PurchaseFinishedProductModal = ({
     label: c.companyName ? `${c.name} (${c.companyName})` : c.name
   }));
 
-  const finishedProductOptions = PRODUCIBLE_ITEMS.map((item) => ({
-    value: item.itemName || item.value,
-    label: item.label || item.itemName || item.value
+  const finishedProductOptions = producibleItems.map((item) => ({
+    value: item.itemName,
+    label: item.itemName
   }));
 
   const handleClose = () => {
@@ -82,6 +103,7 @@ const PurchaseFinishedProductModal = ({
           label="Customer"
           register={register('customerId', { required: 'Select a customer' })}
           error={errors.customerId}
+          required
           options={customerOptions}
           placeholder="Who did you purchase from?"
         />
@@ -89,6 +111,7 @@ const PurchaseFinishedProductModal = ({
           label="Finished product"
           register={register('itemName', { required: 'Select a finished product' })}
           error={errors.itemName}
+          required
           options={finishedProductOptions}
           placeholder="Select product"
         />
@@ -100,6 +123,7 @@ const PurchaseFinishedProductModal = ({
             min: { value: 1, message: 'Must be at least 1' }
           })}
           error={errors.quantity}
+          required
           placeholder="Number of pieces"
         />
         <Input

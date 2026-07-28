@@ -8,6 +8,7 @@ const deleteStock = (id) => apiConfig.client.delete(`stock/delete/${id}`)
 
 const get_all = (data) => apiConfig.client.get("stock/get-all",data)
 const getQuantities = (data) => apiConfig.client.get("stock/get-all-quantities",data)
+const exportCsv = (params) => apiConfig.client.get("stock/export-csv", {}, { params, responseType: 'blob' })
 
 
 export default {
@@ -15,5 +16,6 @@ export default {
     edit,
     deleteStock,
     get_all,
-    getQuantities
+    getQuantities,
+    exportCsv
 }

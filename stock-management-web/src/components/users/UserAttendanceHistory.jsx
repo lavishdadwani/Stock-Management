@@ -1,8 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Card from '../Card';
 import Table from '../Table/Table';
+import Button from '../Button';
 import CheckInPhotoModal from './CheckInPhotoModal';
 import attendanceAPI from '../../../services/attendance';
+import { triggerBlobDownload, parseBlobError } from '../../utils/downloadFile';
+import { FaDownload } from 'react-icons/fa';
 
 const pageSize = 8;
 
@@ -23,6 +26,9 @@ const UserAttendanceHistory = ({ userId }) => {
   const [photoLoading, setPhotoLoading] = useState(false);
   const [photoSrc, setPhotoSrc] = useState(null);
   const [photoError, setPhotoError] = useState(null);
+
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState(null);
 
   const fetchHistory = useCallback(async () => {
     if (!userId) return;
@@ -85,6 +91,24 @@ const UserAttendanceHistory = ({ userId }) => {
     setPhotoModalOpen(false);
     setPhotoSrc(null);
     setPhotoError(null);
+  };
+
+  const handleExportCsv = async () => {
+    if (!userId) return;
+    setExporting(true);
+    setExportError(null);
+    try {
+      const response = await attendanceAPI.exportUserAttendanceCsv(userId);
+      if (response.ok) {
+        triggerBlobDownload(response.data, `attendance-export-${Date.now()}.csv`);
+      } else {
+        setExportError(await parseBlobError(response.data, 'Failed to export attendance history'));
+      }
+    } catch (error) {
+      setExportError(error.message || 'Failed to export attendance history');
+    } finally {
+      setExporting(false);
+    }
   };
 
   const columns = useMemo(
@@ -191,11 +215,24 @@ const UserAttendanceHistory = ({ userId }) => {
   return (
     <>
       <Card className="mt-8">
-        <h2 className="text-lg font-semibold text-gray-900 mb-1">Attendance history</h2>
-        <p className="text-sm text-gray-600 mb-4">
+        <div className="flex items-start justify-between gap-3 mb-1">
+          <h2 className="text-lg font-semibold text-gray-900">Attendance history</h2>
+          <Button
+            variant="outline"
+            size="small"
+            onClick={handleExportCsv}
+            loading={exporting}
+            className="flex items-center space-x-2 shrink-0"
+          >
+            <FaDownload className="w-4 h-4" />
+            <span>Export CSV</span>
+          </Button>
+        </div>
+        <p className="text-sm text-gray-600 mb-2">
           Check-in and check-out sessions. Open the photo when a check-in image was captured (e.g. from the mobile
           app).
         </p>
+        {exportError && <p className="text-sm text-red-600 mb-4">{exportError}</p>}
         <Table
           title=""
           columns={columns}

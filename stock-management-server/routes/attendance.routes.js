@@ -6,7 +6,9 @@ import {
   getMyAttendanceHistory,
   getAttendanceHistoryForUser,
   getAttendanceRecordById,
-  getProducibleItems
+  getProducibleItems,
+  exportMyAttendanceCsv,
+  exportAttendanceCsvForUser
 } from '../controllers/attendanceController.js';
 import { Auth, authorize } from '../middleware/auth.js';
 
@@ -18,6 +20,12 @@ router.get(
   Auth,
   authorize('manager', 'owner'),
   getAttendanceHistoryForUser
+);
+router.get(
+  '/user/:userId/export-csv',
+  Auth,
+  authorize('manager', 'owner'),
+  exportAttendanceCsvForUser
 );
 router.get(
   '/record/:attendanceId',
@@ -39,6 +47,7 @@ router.get('/check-in-status', Auth, authorize('core_team'), getCheckInStatus);
 // Get my attendance history
 router.get('/my-history', Auth, authorize('core_team'), getMyAttendanceHistory);
 
-router.get('/producible-items', Auth, getProducibleItems);
+// Export my attendance history as CSV
+router.get('/my-history/export-csv', Auth, authorize('core_team'), exportMyAttendanceCsv);
 
 export default router;

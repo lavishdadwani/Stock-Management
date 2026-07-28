@@ -1,16 +1,24 @@
 import dotenv from 'dotenv';
 dotenv.config({ path: '.env' });
 
+if (!process.env.JWT_SECRET) {
+  console.error('FATAL: JWT_SECRET environment variable is not set. Refusing to start.');
+  process.exit(1);
+}
+
 import express from 'express';
 import http from 'http';
 import chalk from 'chalk';
 import cors from 'cors';
-import path from 'path';
-import hbs from 'hbs';
-import { fileURLToPath } from 'url';
+import helmet from 'helmet';
+import { apiLimiter } from './middleware/rateLimit.js';
 import userRoutes from './routes/user.routes.js';
 import stockRoutes from './routes/excelStock.routes.js';
 import stockApiRoutes from './routes/stock.routes.js';
+import stockThresholdRoutes from './routes/stockThreshold.routes.js';
+import activityLogRoutes from './routes/activityLog.routes.js';
+import analyticsRoutes from './routes/analytics.routes.js';
+import producibleItemRoutes from './routes/producibleItem.routes.js';
 import attendanceRoutes from './routes/attendance.routes.js';
 import stockTransferRoutes from './routes/stockTransfer.routes.js';
 import itemProducedRoutes from './routes/itemProduced.routes.js';
@@ -19,12 +27,11 @@ import saleRoutes from './routes/sale.routes.js';
 import Response from './models/response.model.js';
 import './db.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
 const app = express();
 const server = http.createServer(app);
 const PORT = process.env.PORT || 8000;
+
+app.use(helmet());
 
 // CORS configuration
 app.use(cors({
@@ -65,8 +72,13 @@ app.response.unauthorized = function(message){
     Response("Unauthorized User", message, null, null, 403)
   )
 }
+app.use(apiLimiter)
 app.use(stockRoutes) // Old Google Sheets routes
 app.use("/api/stock",stockApiRoutes) // New MongoDB stock API routes
+app.use("/api/stock-threshold",stockThresholdRoutes) // Low-stock alert thresholds
+app.use("/api/activity-log",activityLogRoutes) // Audit log / activity trail
+app.use("/api/analytics",analyticsRoutes) // Analytics / reporting dashboard
+app.use("/api/producible-items",producibleItemRoutes) // Producible item catalog (admin-managed)
 app.use("/api/user",userRoutes)
 app.use("/api/attendance",attendanceRoutes) // Attendance and check-in/check-out routes
 app.use("/api/stock-transfer",stockTransferRoutes) // Stock transfer routes
@@ -77,10 +89,6 @@ app.use("/api/sales", saleRoutes) // Sales module routes
 app.get('/', (req, res) => {
   res.send('server is working fine');
 });
-
-app.set('view engine', 'hbs');
-// app.set('view options', { layout: 'layout' });
-hbs.registerPartials(path.join(__dirname, 'views', 'partials'));
 
 app.use((err, req, res, next) => {
   console.error(err);

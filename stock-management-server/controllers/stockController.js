@@ -1,6 +1,11 @@
 import Stock from '../models/stock.model.js';
 import User from '../models/user.model.js'; // Import User model to ensure it's registered
 import { getPaginationParams, formatPaginatedResponse } from '../utils/pagination.js';
+import { evaluateStockLevel } from '../utils/stockAlerts.js';
+import { logActivity } from '../utils/auditLog.js';
+import { toCsv, sendCsv } from '../utils/csv.js';
+
+const EXPORT_ROW_LIMIT = 10000;
 
 const convertToKg = (quantity, unit) => {
   const qty = parseFloat(quantity) || 0;
@@ -53,7 +58,16 @@ export const createStock = async (req, res) => {
     });
 
     const savedStock = await stock.save();
-    
+    await evaluateStockLevel(savedStock.itemName);
+    await logActivity({
+      entityType: 'stock',
+      entityId: savedStock._id,
+      action: 'create',
+      performedBy: userID,
+      description: `Added ${savedStock.quantity}kg of ${savedStock.itemName}`,
+      after: savedStock.toObject()
+    });
+
     res.success(
       'Stock created successfully',
       savedStock,
@@ -126,6 +140,50 @@ export const getAllStock = async (req, res) => {
   }
 };
 
+// Export stock ledger as CSV
+export const exportStockCsv = async (req, res) => {
+  try {
+    const { stockType, itemName, search } = req.query;
+
+    const query = {};
+    if (stockType) query.stockType = stockType;
+    if (itemName) query.itemName = itemName;
+    if (search) {
+      query.$or = [
+        { itemName: { $regex: search, $options: 'i' } },
+        { category: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    const stocks = await Stock.find(query)
+      .populate('addedBy', 'name email')
+      .sort({ createdAt: -1 })
+      .limit(EXPORT_ROW_LIMIT);
+
+    const csv = toCsv(stocks, [
+      { header: 'Item', value: (r) => r.itemName },
+      { header: 'Quantity (kg)', value: (r) => r.quantity },
+      { header: 'Stock Type', value: (r) => r.stockType },
+      { header: 'Category', value: (r) => r.category },
+      { header: 'Added By', value: (r) => r.addedBy?.name || '' },
+      { header: 'Added Date', value: (r) => r.addedDate?.toISOString() || '' },
+      { header: 'Description', value: (r) => r.description || '' },
+      { header: 'Created At', value: (r) => r.createdAt?.toISOString() || '' }
+    ]);
+
+    sendCsv(res, `stock-export-${Date.now()}.csv`, csv);
+  } catch (error) {
+    console.error('Error exporting stock CSV:', error);
+    res.error(
+      error.message || 'Failed to export stock',
+      error,
+      'An error occurred while exporting stock',
+      500
+    );
+  }
+};
+
 // Get stock by ID
 export const getStockById = async (req, res) => {
   try {
@@ -183,6 +241,17 @@ export const updateStock = async (req, res) => {
     // Don't allow updating addedBy
     delete updateData.addedBy;
 
+    const existingStock = await Stock.findById(id);
+    if (!existingStock) {
+      return res.error(
+        'Stock not found',
+        null,
+        'The requested stock item does not exist',
+        404
+      );
+    }
+    const before = existingStock.toObject();
+
     const stock = await Stock.findByIdAndUpdate(
       id,
       { $set: updateData },
@@ -197,6 +266,17 @@ export const updateStock = async (req, res) => {
         404
       );
     }
+
+    await evaluateStockLevel(stock.itemName);
+    await logActivity({
+      entityType: 'stock',
+      entityId: stock._id,
+      action: 'update',
+      performedBy: req.userId,
+      description: `Updated ${stock.itemName} stock entry`,
+      before,
+      after: stock.toObject()
+    });
 
     res.success(
       'Stock updated successfully',
@@ -230,6 +310,16 @@ export const deleteStock = async (req, res) => {
         404
       );
     }
+
+    await evaluateStockLevel(stock.itemName);
+    await logActivity({
+      entityType: 'stock',
+      entityId: stock._id,
+      action: 'delete',
+      performedBy: req.userId,
+      description: `Deleted ${stock.quantity}kg ${stock.itemName} stock entry`,
+      before: stock.toObject()
+    });
 
     res.success(
       'Stock deleted successfully',

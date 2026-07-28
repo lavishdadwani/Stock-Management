@@ -19,7 +19,8 @@ const EditUserModal = ({ isOpen, onClose, onSubmit, loading, user, allowedRoleOp
       role: '',
       password: '',
       photo: ''
-    }
+    },
+    mode: 'onChange'
   });
 
   useEffect(() => {
@@ -71,12 +72,14 @@ const EditUserModal = ({ isOpen, onClose, onSubmit, loading, user, allowedRoleOp
           label="Full Name"
           register={register('name', { required: 'Name is required' })}
           error={errors.name}
+          required
           placeholder="Full name"
         />
         <Input
           label="Phone Number"
           register={register('number', { required: 'Phone number is required' })}
           error={errors.number}
+          required
           placeholder="Phone number"
         />
         {allowedRoleOptions?.length > 0 && (
@@ -84,6 +87,7 @@ const EditUserModal = ({ isOpen, onClose, onSubmit, loading, user, allowedRoleOp
             label="Role"
             register={register('role', { required: 'Role is required' })}
             error={errors.role}
+            required
             options={allowedRoleOptions}
             placeholder="Select role"
           />

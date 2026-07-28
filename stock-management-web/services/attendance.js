@@ -22,6 +22,12 @@ const getUserAttendanceHistory = (userId, params) => {
 const getAttendanceRecord = (attendanceId) =>
   apiConfig.client.get(`attendance/record/${attendanceId}`)
 
+const exportMyAttendanceCsv = (params) =>
+  apiConfig.client.get("attendance/my-history/export-csv", {}, { params, responseType: 'blob' })
+
+const exportUserAttendanceCsv = (userId, params) =>
+  apiConfig.client.get(`attendance/user/${userId}/export-csv`, {}, { params, responseType: 'blob' })
+
 export default {
   checkIn,
   checkOut,
@@ -29,6 +35,8 @@ export default {
   getMyAttendanceHistory,
   getProducibleItems,
   getUserAttendanceHistory,
-  getAttendanceRecord
+  getAttendanceRecord,
+  exportMyAttendanceCsv,
+  exportUserAttendanceCsv
 }
 

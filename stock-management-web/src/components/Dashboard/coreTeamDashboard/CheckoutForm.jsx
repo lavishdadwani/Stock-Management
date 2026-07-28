@@ -3,13 +3,36 @@ import Button from '../../Button';
 import Input from '../../Input';
 import Select from '../../Select';
 import stockTransferAPI from '../../../../services/stockTransfer';
-import { PRODUCIBLE_ITEMS } from '../../../data/producibleItems';
+import producibleItemsAPI from '../../../../services/producibleItems';
 import { useForm } from 'react-hook-form';
 
 const CheckoutForm = ({ onSubmit, onCancel, loading: externalLoading = false }) => {
   const [loading, setLoading] = useState(false);
+  const [producibleItems, setProducibleItems] = useState([]);
 
-  const producibleItems = useMemo(() => PRODUCIBLE_ITEMS, []);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const response = await producibleItemsAPI.getActive();
+        if (!cancelled && response.ok) {
+          const items = (response.data?.data || []).map((item) => ({
+            value: item.itemName,
+            label: item.itemName,
+            itemName: item.itemName,
+            wireUsedType: item.wireUsedType,
+            wireKgPerPiece: item.wireKgPerPiece
+          }));
+          setProducibleItems(items);
+        }
+      } catch {
+        if (!cancelled) setProducibleItems([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const {
     register,
@@ -309,7 +332,7 @@ const CheckoutForm = ({ onSubmit, onCancel, loading: externalLoading = false }) 
           placeholder="Enter any additional notes"
           disabled={isLoading}
           rows={3}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 disabled:bg-gray-100 disabled:cursor-not-allowed"
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 disabled:bg-gray-100 disabled:cursor-not-allowed"
         />
       </div>
 

@@ -577,6 +577,9 @@ const assertCanManageUser = (actorRole, actorId, targetUser) => {
       message: 'You cannot change or delete your own account from here. Use your profile instead.',
     };
   }
+  if (actorRole === 'super_admin') {
+    return { ok: true };
+  }
   if (targetUser.role === 'owner') {
     return { ok: false, message: 'Owner accounts cannot be updated or deleted from the users module.' };
   }
@@ -707,9 +710,12 @@ const createUserCredentials = async (req, res) => {
     const creatorRole = req.userRole;
 
     // Role restrictions:
+    // Super admin -> any role
     // Owner -> manager/core team
     // Manager -> core team only
-    if (creatorRole === 'owner') {
+    if (creatorRole === 'super_admin') {
+      // No restriction - super admin can create any role
+    } else if (creatorRole === 'owner') {
       if (!['manager', 'core_team'].includes(role)) {
         return res.error(
           'Invalid role selection',
